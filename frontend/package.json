@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "ethers": "^6.16.0",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.16.3",
     "next": "16.1.6",
     "nodemailer": "^8.0.1",
+    "paillier-bigint": "^3.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },

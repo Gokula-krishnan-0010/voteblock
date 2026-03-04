@@ -1,6 +1,6 @@
-import db from "@/app/lib/db";
-import { generateOTP, hashOTP } from "@/app/lib/otp";
-import { sendOTP } from "@/app/lib/email";
+import db from "@/lib/db";
+import { generateOTP, hashOTP } from "@/lib/otp";
+import { sendOTP } from "@/lib/email";
 import { NextResponse } from "next/server";
 
 export async function POST(req) {

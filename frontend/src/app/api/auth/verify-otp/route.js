@@ -1,6 +1,6 @@
-import db from "@/app/lib/db";
-import { compareOTP } from "@/app/lib/otp";
-import { signToken } from "@/app/lib/jwt";
+import db from "@/lib/db";
+import { compareOTP } from "@/lib/otp";
+import { signToken } from "@/lib/jwt";
 import { NextResponse } from "next/server";
 
 export async function POST(req) {

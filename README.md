@@ -27,7 +27,6 @@ The system combines a modern **Next.js frontend** with **Solidity smart contract
 ### Frontend
 - Next.js (App Router)
 - React
-- Tailwind CSS
 - JavaScript
 - MetaMask
 
@@ -50,9 +49,11 @@ The system combines a modern **Next.js frontend** with **Solidity smart contract
 ```bash
 git clone <your-repo-url>
 cd voteblock
+
 cd frontend
 npm install
 npm run dev
+
 cd contract
 npm install
 npx hardhat compile
