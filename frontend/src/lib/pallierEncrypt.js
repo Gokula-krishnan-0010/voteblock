@@ -1,14 +1,28 @@
 'use client';
 
-import { PublicKey } from "paillier-bigint";
+import { PublicKey } from "paillier-bigint"; // ✅ import from the npm package
 
-export function encryptVote(vote, publicKeyData) {
-  const n = BigInt(publicKeyData.n);
-  const g = BigInt(publicKeyData.g);
+// ── Fetch public key from your server API ────────────────────────────
+export async function fetchPublicKey() {
+  const res = await fetch("/api/auth/public-key");
 
-  const publicKey = new PublicKey(n, g);
+  if (!res.ok) throw new Error("Failed to fetch public key");
 
-  const ciphertext = publicKey.encrypt(BigInt(vote));
+  const { n, g } = await res.json();
 
-  return ciphertext.toString();
+  // Reconstruct PublicKey object from the n and g strings
+  return new PublicKey(BigInt(n), BigInt(g));  // ✅ correct usage
+}
+
+// ── Encrypt the vote ─────────────────────────────────────────────────
+export async function encryptVote(candidateId) {
+  const publicKey = await fetchPublicKey();
+
+  // Convert candidateId string → BigInt for paillier
+  const encoded  = new TextEncoder().encode(candidateId);
+  const voteBigInt = BigInt("0x" + Buffer.from(encoded).toString("hex"));
+
+  const ciphertext = publicKey.encrypt(voteBigInt);
+
+  return ciphertext.toString(); // hex string → goes to castVote()
 }

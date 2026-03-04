@@ -1,9 +1,16 @@
 import { decrypt } from "@/server/paillierKeys";
 
 export async function POST(req) {
-  const { ciphertext } = await req.json();
+  const { encryptedVote } = await req.json();
 
-  const result = await decrypt(ciphertext);
+  if (!encryptedVote) {
+    return Response.json({ error: "Missing encryptedVote" }, { status: 400 });
+  }
 
-  return Response.json({ result });
+  try {
+    const result = decrypt(encryptedVote);
+    return Response.json({ candidateId: result });
+  } catch (err) {
+    return Response.json({ error: "Decryption failed" }, { status: 500 });
+  }
 }
