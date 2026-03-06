@@ -6,27 +6,27 @@ import { ethers } from "ethers";
 // ── Inline ABI (replace with your actual imports in Next.js) ─────────
 import AdminABI from "@/abi/Admin.json";
 import ElectionABI from "@/abi/Election.json";
-const AdminABI = [
-  "function createElection(address _admin, string memory _electionName, uint256 _startTime, uint256 _endTime) public returns (address)",
-  "function getElections() public view returns (address[] memory)",
-  "event ElectionCreated(address indexed electionAddress, string electionName, address admin)"
-];
-const ElectionABI = [
-  "function addVoter(string memory _voterId, address _walletAddress) public",
-  "function addCandidate(string memory _candidateId, string memory _candidateName, string memory _candidateParty) public",
-  "function announceWinner(string memory _winnerId) public",
-  "function getElectionName() public view returns (string memory)",
-  "function getStartTime() public view returns (uint256)",
-  "function getEndTime() public view returns (uint256)",
-  "function getRegisteredVoterCount() public view returns (uint256)",
-  "function getVotedVoterCount() public view returns (uint256)",
-  "function getCandidateCount() public view returns (uint256)",
-  "function winnerDeclared() public view returns (bool)",
-  "function WINNER() public view returns (string memory)",
-  "function ADMIN() public view returns (address)",
-  "function getVoterInfo(address _walletAddress) public view returns (string memory, address, bool, string memory)",
-  "function getCandidateInfo(string memory _candidateId) public view returns (string memory, string memory, string memory)"
-];
+// const AdminABI = [
+//   "function createElection(address _admin, string memory _electionName, uint256 _startTime, uint256 _endTime) public returns (address)",
+//   "function getElections() public view returns (address[] memory)",
+//   "event ElectionCreated(address indexed electionAddress, string electionName, address admin)"
+// ];
+// const ElectionABI = [
+//   "function addVoter(string memory _voterId, address _walletAddress) public",
+//   "function addCandidate(string memory _candidateId, string memory _candidateName, string memory _candidateParty) public",
+//   "function announceWinner(string memory _winnerId) public",
+//   "function getElectionName() public view returns (string memory)",
+//   "function getStartTime() public view returns (uint256)",
+//   "function getEndTime() public view returns (uint256)",
+//   "function getRegisteredVoterCount() public view returns (uint256)",
+//   "function getVotedVoterCount() public view returns (uint256)",
+//   "function getCandidateCount() public view returns (uint256)",
+//   "function winnerDeclared() public view returns (bool)",
+//   "function WINNER() public view returns (string memory)",
+//   "function ADMIN() public view returns (address)",
+//   "function getVoterInfo(address _walletAddress) public view returns (string memory, address, bool, string memory)",
+//   "function getCandidateInfo(string memory _candidateId) public view returns (string memory, string memory, string memory)"
+// ];
 
 const ADMIN_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ADMIN_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000";
 
@@ -517,6 +517,7 @@ export default function AdminDashboard() {
   const loadElections = async () => {
     try {
       const provider = getProvider();
+
       const contract = new ethers.Contract(ADMIN_CONTRACT_ADDRESS, AdminABI, provider);
       const list     = await contract.getElections();
       setElections([...list].reverse()); // newest first

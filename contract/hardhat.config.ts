@@ -21,6 +21,11 @@ export default defineConfig({
     },
   },
   networks: {
+    localhost: {
+      type: "http",              // ✅ type is "http" not a URL
+      url: "http://127.0.0.1:8545", // ✅ URL goes here
+      chainType: "l1",
+    },
     hardhatMainnet: {
       type: "edr-simulated",
       chainType: "l1",

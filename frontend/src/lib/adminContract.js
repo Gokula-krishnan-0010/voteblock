@@ -1,4 +1,3 @@
-// src/lib/adminContract.js
 'use client';
 
 import { ethers } from "ethers";

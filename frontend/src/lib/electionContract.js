@@ -1,4 +1,3 @@
-// src/lib/electionContract.js
 'use client';
 
 import { ethers } from "ethers";
