@@ -57,5 +57,5 @@ npm run dev
 cd contract
 npm install
 npx hardhat compile
-npx hardhat ignition deploy ./ignition/modules/<YourModule>.ts --network localhost
+npx hardhat run scripts/deploy.ts --network localhost
 ```
