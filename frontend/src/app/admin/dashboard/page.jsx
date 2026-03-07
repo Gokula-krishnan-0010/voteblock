@@ -735,7 +735,7 @@ export default function AdminDashboard() {
           <div style={styles.headerLeft}>
             <div style={styles.logoMark} />
             <div>
-              <h1 style={styles.title}>VoteChain</h1>
+              <h1 style={styles.title}>VoteBlock</h1>
               <div style={styles.subtitle}>Admin Control Panel</div>
             </div>
           </div>
