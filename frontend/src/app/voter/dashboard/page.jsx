@@ -3,29 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 
-// ── Inline ABI (replace with your actual imports in Next.js) ─────────
 import AdminABI from "@/abi/Admin.json";
 import ElectionABI from "@/abi/Election.json";
-// const AdminABI = [
-//   "function getElections() public view returns (address[] memory)",
-// ];
-// const ElectionABI = [
-//   "function castVote(string memory _encryptedVote) public",
-//   "function getElectionName() public view returns (string memory)",
-//   "function getStartTime() public view returns (uint256)",
-//   "function getEndTime() public view returns (uint256)",
-//   "function getRegisteredVoterCount() public view returns (uint256)",
-//   "function getVotedVoterCount() public view returns (uint256)",
-//   "function getCandidateCount() public view returns (uint256)",
-//   "function winnerDeclared() public view returns (bool)",
-//   "function WINNER() public view returns (string memory)",
-//   "function getVoterInfo(address _walletAddress) public view returns (string memory, address, bool, string memory)",
-//   "function getCandidateInfo(string memory _candidateId) public view returns (string memory, string memory, string memory)",
-// ];
 
 const ADMIN_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ADMIN_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000";
 
-// ── Styles (identical to AdminDashboard) ─────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────
 const styles = {
   root: {
     minHeight: "100vh",
@@ -341,12 +324,11 @@ const styles = {
     borderRadius: "2px",
     marginBottom: "10px",
   },
-  badgeActive:   { background: "rgba(0,200,100,0.1)",  border: "1px solid rgba(0,200,100,0.3)",  color: "#00c864" },
-  badgeUpcoming: { background: "rgba(0,100,255,0.1)",  border: "1px solid rgba(0,100,255,0.3)",  color: "#4d9fff" },
-  badgeEnded:    { background: "rgba(100,100,100,0.1)", border: "1px solid rgba(100,100,100,0.3)", color: "#666" },
-  badgeVoted:    { background: "rgba(0,200,100,0.08)", border: "1px solid rgba(0,200,100,0.25)", color: "#00c864" },
-  badgeEligible: { background: "rgba(0,100,255,0.08)", border: "1px solid rgba(0,100,255,0.25)", color: "#4d9fff" },
-  // Candidate vote card
+  badgeActive:   { background: "rgba(0,200,100,0.1)",   border: "1px solid rgba(0,200,100,0.3)",   color: "#00c864" },
+  badgeUpcoming: { background: "rgba(0,100,255,0.1)",   border: "1px solid rgba(0,100,255,0.3)",   color: "#4d9fff" },
+  badgeEnded:    { background: "rgba(100,100,100,0.1)", border: "1px solid rgba(100,100,100,0.3)", color: "#666"    },
+  badgeVoted:    { background: "rgba(0,200,100,0.08)",  border: "1px solid rgba(0,200,100,0.25)",  color: "#00c864" },
+  badgeEligible: { background: "rgba(0,100,255,0.08)",  border: "1px solid rgba(0,100,255,0.25)",  color: "#4d9fff" },
   candidateGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
@@ -367,45 +349,17 @@ const styles = {
     background: "rgba(0,40,90,0.5)",
     boxShadow: "0 0 24px rgba(0,100,255,0.18)",
   },
-  candidateName: {
-    fontSize: "15px",
-    fontWeight: "600",
-    color: "#c0d8ff",
-    marginBottom: "4px",
-    letterSpacing: "0.04em",
-  },
-  candidateId: {
-    fontSize: "10px",
-    color: "rgba(0,150,255,0.45)",
-    fontFamily: "monospace",
-    letterSpacing: "0.08em",
-    marginBottom: "6px",
-  },
-  candidateParty: {
-    fontSize: "11px",
-    color: "rgba(100,160,255,0.6)",
-    letterSpacing: "0.08em",
-  },
+  candidateName:  { fontSize: "15px", fontWeight: "600", color: "#c0d8ff", marginBottom: "4px", letterSpacing: "0.04em" },
+  candidateId:    { fontSize: "10px", color: "rgba(0,150,255,0.45)", fontFamily: "monospace", letterSpacing: "0.08em", marginBottom: "6px" },
+  candidateParty: { fontSize: "11px", color: "rgba(100,160,255,0.6)", letterSpacing: "0.08em" },
   txBox: {
     marginTop: "20px",
     padding: "16px",
     background: "rgba(0,200,80,0.04)",
     border: "1px solid rgba(0,200,80,0.2)",
   },
-  txLabel: {
-    fontSize: "9px",
-    letterSpacing: "0.2em",
-    textTransform: "uppercase",
-    color: "rgba(0,200,80,0.5)",
-    marginBottom: "6px",
-  },
-  txHash: {
-    fontSize: "11px",
-    color: "#00c864",
-    fontFamily: "monospace",
-    wordBreak: "break-all",
-    letterSpacing: "0.04em",
-  },
+  txLabel: { fontSize: "9px", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(0,200,80,0.5)", marginBottom: "6px" },
+  txHash:  { fontSize: "11px", color: "#00c864", fontFamily: "monospace", wordBreak: "break-all", letterSpacing: "0.04em" },
   electionListCard: {
     background: "rgba(0,8,20,0.8)",
     border: "1px solid rgba(0,120,255,0.2)",
@@ -449,8 +403,8 @@ function shortAddr(addr) {
 }
 function getStatus(start, end) {
   const now = Math.floor(Date.now() / 1000);
-  if (now < start)  return "upcoming";
-  if (now <= end)   return "active";
+  if (now < start) return "upcoming";
+  if (now <= end)  return "active";
   return "ended";
 }
 function fmtDate(ts) {
@@ -459,34 +413,26 @@ function fmtDate(ts) {
 
 // ── Main Component ────────────────────────────────────────────────────
 export default function VoterDashboard() {
-  const [activeTab, setActiveTab]         = useState("elections");
-  const [wallet, setWallet]               = useState(null);
-  const [loading, setLoading]             = useState(false);
-  const [toast, setToast]                 = useState(null);
-
-  // Elections
-  const [allElections, setAllElections]   = useState([]);   // all addresses
-  const [eligibleElections, setEligible]  = useState([]);   // addresses voter is registered in
-  const [selectedElection, setSelected]   = useState(null);
-  const [electionInfo, setElectionInfo]   = useState(null);
-
-  // Candidates
-  const [candidates, setCandidates]       = useState([]);   // [{id, name, party}]
+  const [activeTab, setActiveTab]                 = useState("elections");
+  const [wallet, setWallet]                       = useState(null);
+  const [loading, setLoading]                     = useState(false);
+  const [toast, setToast]                         = useState(null);
+  const [allElections, setAllElections]           = useState([]);
+  const [eligibleElections, setEligible]          = useState([]);
+  const [selectedElection, setSelected]           = useState(null);
+  const [electionInfo, setElectionInfo]           = useState(null);
+  const [candidates, setCandidates]               = useState([]);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [voterState, setVoterState]               = useState(null);
+  const [txHash, setTxHash]                       = useState(null);
 
-  // Voter state for selected election
-  const [voterState, setVoterState]       = useState(null); // {voterId, hasVoted}
-
-  // Cast vote result
-  const [txHash, setTxHash]               = useState(null);
-
-  // ── Toast ────────────────────────────────────────────────────────────
+  // ── Toast ─────────────────────────────────────────────────────────────
   const showToast = useCallback((msg, type = "info") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 6000);
   }, []);
 
-  // ── Provider / Signer ────────────────────────────────────────────────
+  // ── Provider / Signer ─────────────────────────────────────────────────
   const getProvider = () => {
     if (typeof window === "undefined" || !window.ethereum)
       throw new Error("MetaMask not installed");
@@ -498,7 +444,7 @@ export default function VoterDashboard() {
     return p.getSigner();
   };
 
-  // ── Connect Wallet ───────────────────────────────────────────────────
+  // ── Connect Wallet ────────────────────────────────────────────────────
   const connectWallet = async () => {
     try {
       setLoading(true);
@@ -514,7 +460,11 @@ export default function VoterDashboard() {
     }
   };
 
-  // ── Load all elections, filter eligible ones for this voter ──────────
+  // ── Load all elections + eligibility check ────────────────────────────
+  // FIX 1: switched to Promise.allSettled so one failed call never silently
+  //        blocks the entire eligible list from being built.
+  //        If getVoterInfo is onlyAdmin in your contract, add a public
+  //        isRegisteredVoter(address) view function and call that instead.
   const loadAllElections = async (voterAddr) => {
     try {
       const provider = getProvider();
@@ -525,28 +475,45 @@ export default function VoterDashboard() {
 
       if (!voterAddr) return;
 
-      // Check each election to see if voter is registered
       const eligible = [];
-      await Promise.all(
+      const results  = await Promise.allSettled(
         reversed.map(async (addr) => {
-          try {
-            const election = new ethers.Contract(addr, ElectionABI, provider);
-            const [voterId] = await election.getVoterInfo(voterAddr);
-            if (voterId && voterId.length > 0) {
-              eligible.push(addr);
-            }
-          } catch {
-            // voter not registered in this election — skip
-          }
+          const election = new ethers.Contract(addr, ElectionABI, provider);
+          const [voterId] = await election.getVoterInfo(voterAddr);
+          if (voterId && voterId.length > 0) eligible.push(addr);
         })
       );
+
+      // Surface per-election errors in the console so they're visible in dev
+      results.forEach((r, i) => {
+        if (r.status === "rejected") {
+          console.warn(`[eligibility] ${reversed[i]}:`, r.reason?.message ?? r.reason);
+        }
+      });
+
       setEligible(eligible);
     } catch (e) {
       showToast("Failed to load elections: " + e.message, "error");
     }
   };
 
-  // ── Load election info + voter state + candidates ────────────────────
+  // ── FIX 2: On mount, read already-connected account WITHOUT prompting ─
+  // Original code passed null → eligibility check was always skipped on load.
+  // eth_accounts returns existing accounts silently (no MetaMask popup).
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.ethereum) return;
+
+    window.ethereum
+      .request({ method: "eth_accounts" })
+      .then((accounts) => {
+        const addr = accounts[0] ?? null;
+        if (addr) setWallet(addr);
+        loadAllElections(addr); // real address, or null if not connected
+      })
+      .catch(() => loadAllElections(null));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Load election details + voter state + candidates ──────────────────
   const loadElectionDetails = async (addr) => {
     try {
       const provider = getProvider();
@@ -579,66 +546,60 @@ export default function VoterDashboard() {
         status:         getStatus(s, e),
       });
 
-      // Load voter state if wallet connected
-      if (wallet) {
+      // FIX 3: wallet state may not yet reflect the just-connected account when
+      //        loadElectionDetails is called right after setWallet(). Read from
+      //        MetaMask directly as a reliable fallback.
+      let activeWallet = wallet;
+      if (!activeWallet) {
         try {
-          const [voterId, , hasVoted] = await contract.getVoterInfo(wallet);
+          const accounts = await window.ethereum.request({ method: "eth_accounts" });
+          activeWallet = accounts[0] ?? null;
+        } catch { /* ignore */ }
+      }
+
+      if (activeWallet) {
+        try {
+          const [voterId, , hasVoted] = await contract.getVoterInfo(activeWallet);
           setVoterState({ voterId, hasVoted });
         } catch {
           setVoterState(null);
         }
       }
 
-      // Load all candidates
-      // Election.sol stores candidateList as string[] — we iterate by index
-      // Since there's no getCandidateIds(), we rely on getCandidateCount + a known ID pattern
-      // If your contract exposes a getCandidateList(), use that instead.
-      // Here we load candidates via the CandidateAdded events for robustness.
-      const iface  = new ethers.Interface([
-        "event CandidateAdded(string indexed candidateId)",
-      ]);
-      const filter = { address: addr, topics: [iface.getEvent("CandidateAdded").topicHash] };
-      const logs   = await provider.getLogs({ fromBlock: 0, toBlock: "latest", ...filter });
-
-      const loaded = await Promise.all(
-        logs.map(async (log) => {
-          try {
-            // candidateId is indexed so it's hashed in topics — fetch via read
-            // We decode the non-indexed version by fetching all CandidateAdded events
-            const parsed = iface.parseLog(log);
-            // indexed string → keccak hash only, not decodeable back
-            // So we read from the contract storage using the raw log data approach:
-            // Instead, use a non-indexed event signature fallback
-            return null;
-          } catch { return null; }
-        })
-      );
-
-      // Fallback: use non-indexed event to get actual candidateId strings
-      const ifaceRaw = new ethers.Interface([
+      // ── Load candidates ───────────────────────────────────────────────
+      // FIX 4: removed the dead indexed-event block that always returned null.
+      //        Only use the non-indexed signature. Your Solidity event MUST be:
+      //          event CandidateAdded(string candidateId);        ✅
+      //        NOT:
+      //          event CandidateAdded(string indexed candidateId); ❌ undecodable
+      const iface = new ethers.Interface([
         "event CandidateAdded(string candidateId)",
       ]);
-      const logsRaw  = await provider.getLogs({
+
+      const logs = await provider.getLogs({
         fromBlock: 0,
-        toBlock: "latest",
-        address: addr,
-        topics: [ifaceRaw.getEvent("CandidateAdded").topicHash],
+        toBlock:   "latest",
+        address:   addr,
+        topics:    [iface.getEvent("CandidateAdded").topicHash],
       });
 
-      const candidateList = await Promise.all(
-        logsRaw.map(async (log) => {
-          try {
-            const parsed = ifaceRaw.parseLog(log);
-            const id     = parsed.args.candidateId;
-            const [cId, cName, cParty] = await contract.getCandidateInfo(id);
-            return { id: cId, name: cName, party: cParty };
-          } catch { return null; }
+      const settled = await Promise.allSettled(
+        logs.map(async (log) => {
+          const parsed           = iface.parseLog(log);
+          const id               = parsed.args.candidateId;
+          const [cId, cName, cParty] = await contract.getCandidateInfo(id);
+          return { id: cId, name: cName, party: cParty };
         })
       );
 
-      setCandidates(candidateList.filter(Boolean));
+      setCandidates(
+        settled
+          .filter(r => r.status === "fulfilled")
+          .map(r => r.value)
+      );
       setSelectedCandidate(null);
       setTxHash(null);
+
     } catch (e) {
       showToast("Failed to load election details: " + e.message, "error");
     }
@@ -653,47 +614,32 @@ export default function VoterDashboard() {
     await loadElectionDetails(addr);
   };
 
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.ethereum) {
-      loadAllElections(null);
-    }
-  }, []);
-
-  // ── Cast Vote ────────────────────────────────────────────────────────
+  // ── Cast Vote ─────────────────────────────────────────────────────────
   const handleCastVote = async () => {
     try {
-      if (!wallet)            { showToast("Connect wallet first", "error"); return; }
-      if (!selectedElection)  { showToast("Select an election first", "error"); return; }
-      if (!selectedCandidate) { showToast("Select a candidate first", "error"); return; }
-      if (voterState?.hasVoted) { showToast("You have already voted", "error"); return; }
+      if (!wallet)              { showToast("Connect wallet first", "error");     return; }
+      if (!selectedElection)    { showToast("Select an election first", "error"); return; }
+      if (!selectedCandidate)   { showToast("Select a candidate first", "error"); return; }
+      if (voterState?.hasVoted) { showToast("You have already voted", "error");   return; }
       if (electionInfo?.status !== "active") {
-        showToast("Election is not currently active", "error"); return;
+        showToast("Election is not currently active", "error"); 
+        return;
       }
 
       setLoading(true);
       showToast("Encrypting vote...", "info");
 
-      // ── Encrypt the vote ─────────────────────────────────────────
-      // Fetch public key from server, encrypt with paillier
-      // Replace this block with your actual pallierEncrypt.js call:
-      //
-      //   import { encryptVote } from "@/lib/pallierEncrypt";
-      //   const encryptedVote = await encryptVote(selectedCandidate.id);
-      //
-      // For now we send a placeholder so the UI/flow is wired correctly:
       let encryptedVote;
       try {
         const res = await fetch("/api/auth/public-key");
         if (res.ok) {
           const { n, g } = await res.json();
-          // Dynamically import paillier-bigint client side
           const { PublicKey } = await import("paillier-bigint");
           const pubKey  = new PublicKey(BigInt(n), BigInt(g));
           const encoded = new TextEncoder().encode(selectedCandidate.id);
-          const bigint  = BigInt("0x" + Array.from(encoded).map(b => b.toString(16).padStart(2,"0")).join(""));
+          const bigint  = BigInt("0x" + Array.from(encoded).map(b => b.toString(16).padStart(2, "0")).join(""));
           encryptedVote = pubKey.encrypt(bigint).toString();
         } else {
-          // Fallback: send candidateId as plain string (dev only)
           encryptedVote = selectedCandidate.id;
           showToast("⚠ Public key unavailable — sending unencrypted (dev mode)", "info");
         }
@@ -705,19 +651,15 @@ export default function VoterDashboard() {
 
       const signer   = await getSigner();
       const contract = new ethers.Contract(selectedElection, ElectionABI, signer);
-
-      // MetaMask popup appears here
-      const tx      = await contract.castVote(encryptedVote);
+      const tx       = await contract.castVote(encryptedVote);
       showToast("Transaction submitted. Waiting for confirmation...", "info");
 
       const receipt = await tx.wait();
-
       setTxHash(receipt.hash);
       setVoterState(v => ({ ...v, hasVoted: true }));
       showToast("Vote cast successfully!", "success");
-
-      // Refresh election info
       await loadElectionDetails(selectedElection);
+
     } catch (e) {
       showToast(e.reason || e.message, "error");
     } finally {
@@ -725,7 +667,7 @@ export default function VoterDashboard() {
     }
   };
 
-  // ── Render helpers ───────────────────────────────────────────────────
+  // ── Render helpers ────────────────────────────────────────────────────
   const statusBadgeStyle = (status) => ({
     ...styles.badge,
     ...(status === "active"   ? styles.badgeActive   :
@@ -739,6 +681,7 @@ export default function VoterDashboard() {
     { id: "results",   label: "Results"      },
   ];
 
+  // ── Render ────────────────────────────────────────────────────────────
   return (
     <div style={styles.root}>
       <style>{`
@@ -746,9 +689,9 @@ export default function VoterDashboard() {
         @keyframes slideIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
         @keyframes pulse   { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
         @keyframes glow    { 0%,100%{box-shadow:0 0 8px rgba(0,100,255,0.4);} 50%{box-shadow:0 0 20px rgba(0,180,255,0.8);} }
-        button:hover  { opacity: 0.85; }
-        input:focus   { border-color: rgba(0,150,255,0.6) !important; box-shadow: 0 0 0 2px rgba(0,100,255,0.1); }
-        .el-row:hover { border-color: rgba(0,150,255,0.4) !important; background: rgba(0,20,50,0.5) !important; }
+        button:hover     { opacity: 0.85; }
+        input:focus      { border-color: rgba(0,150,255,0.6) !important; box-shadow: 0 0 0 2px rgba(0,100,255,0.1); }
+        .el-row:hover    { border-color: rgba(0,150,255,0.4) !important; background: rgba(0,20,50,0.5) !important; }
         .cand-card:hover { border-color: rgba(0,150,255,0.45) !important; background: rgba(0,25,60,0.5) !important; }
       `}</style>
 
@@ -758,7 +701,7 @@ export default function VoterDashboard() {
 
       <div style={styles.container}>
 
-        {/* ── Header ─────────────────────────────────────────────── */}
+        {/* ── Header ───────────────────────────────────────────────── */}
         <header style={styles.header}>
           <div style={styles.headerLeft}>
             <div style={styles.logoMark} />
@@ -777,7 +720,7 @@ export default function VoterDashboard() {
           </button>
         </header>
 
-        {/* ── Stats ──────────────────────────────────────────────── */}
+        {/* ── Stats ────────────────────────────────────────────────── */}
         <div style={styles.statsGrid}>
           {[
             { label: "Total Elections",    value: allElections.length },
@@ -795,7 +738,7 @@ export default function VoterDashboard() {
           ))}
         </div>
 
-        {/* ── Tab Nav ────────────────────────────────────────────── */}
+        {/* ── Tab Nav ──────────────────────────────────────────────── */}
         <nav style={styles.tabNav}>
           {tabs.map(t => (
             <button
@@ -808,12 +751,11 @@ export default function VoterDashboard() {
           ))}
         </nav>
 
-        {/* ════════════════════════════════════════════════════════
+        {/* ═══════════════════════════════════════════
             TAB: MY ELECTIONS
-        ════════════════════════════════════════════════════════ */}
+        ═══════════════════════════════════════════ */}
         {activeTab === "elections" && (
           <div>
-            {/* Eligible elections */}
             <div style={styles.card}>
               <div style={styles.cardAccent} />
               <div style={styles.cardTitle}>
@@ -829,9 +771,7 @@ export default function VoterDashboard() {
               {!wallet ? (
                 <div style={styles.emptyState}>Connect your wallet to see eligible elections</div>
               ) : eligibleElections.length === 0 ? (
-                <div style={styles.emptyState}>
-                  Your wallet is not registered in any election
-                </div>
+                <div style={styles.emptyState}>Your wallet is not registered in any election</div>
               ) : (
                 eligibleElections.map(addr => (
                   <EligibleElectionRow
@@ -857,7 +797,6 @@ export default function VoterDashboard() {
               </div>
             </div>
 
-            {/* All elections (read-only overview) */}
             <div style={styles.card}>
               <div style={styles.cardAccent} />
               <div style={styles.cardTitle}>
@@ -891,12 +830,11 @@ export default function VoterDashboard() {
           </div>
         )}
 
-        {/* ════════════════════════════════════════════════════════
+        {/* ═══════════════════════════════════════════
             TAB: CAST VOTE
-        ════════════════════════════════════════════════════════ */}
+        ═══════════════════════════════════════════ */}
         {activeTab === "vote" && (
           <div>
-            {/* Election selector */}
             <div style={{ ...styles.card, marginBottom: "16px" }}>
               <div style={styles.cardAccent} />
               <div style={styles.cardTitle}>
@@ -930,7 +868,6 @@ export default function VoterDashboard() {
               )}
             </div>
 
-            {/* Voter status + vote panel */}
             {selectedElection && electionInfo ? (
               <div style={styles.card}>
                 <div style={styles.cardAccent} />
@@ -938,42 +875,33 @@ export default function VoterDashboard() {
                   <div style={styles.cardTitleDot} />
                   {electionInfo.name}
                   <span style={{ marginLeft: "auto" }}>
-                    <span style={statusBadgeStyle(electionInfo.status)}>
-                      {electionInfo.status}
-                    </span>
+                    <span style={statusBadgeStyle(electionInfo.status)}>{electionInfo.status}</span>
                   </span>
                 </div>
 
-                {/* Election meta */}
                 {[
-                  ["Election",  electionInfo.name],
-                  ["Start",     fmtDate(electionInfo.startTime)],
-                  ["End",       fmtDate(electionInfo.endTime)],
-                  ["Your ID",   voterState?.voterId || "—"],
-                  ["Voted",     voterState?.hasVoted ? "Yes ✓" : "No"],
+                  ["Election", electionInfo.name],
+                  ["Start",    fmtDate(electionInfo.startTime)],
+                  ["End",      fmtDate(electionInfo.endTime)],
+                  ["Your ID",  voterState?.voterId || "—"],
+                  ["Voted",    voterState?.hasVoted ? "Yes ✓" : "No"],
                 ].map(([k, v]) => (
                   <div key={k} style={styles.infoRow}>
                     <span style={styles.infoLabel}>{k}</span>
-                    <span style={{
-                      ...styles.infoValue,
-                      color: k === "Voted" && voterState?.hasVoted ? "#00c864" : "#c0d8ff",
-                    }}>{String(v)}</span>
+                    <span style={{ ...styles.infoValue, color: k === "Voted" && voterState?.hasVoted ? "#00c864" : "#c0d8ff" }}>
+                      {String(v)}
+                    </span>
                   </div>
                 ))}
 
-                {/* Progress bar */}
                 {electionInfo.voterCount > 0 && (
                   <div style={styles.progressBar}>
-                    <div style={{
-                      ...styles.progressFill,
-                      width: `${(electionInfo.votedCount / electionInfo.voterCount) * 100}%`,
-                    }} />
+                    <div style={{ ...styles.progressFill, width: `${(electionInfo.votedCount / electionInfo.voterCount) * 100}%` }} />
                   </div>
                 )}
 
                 <hr style={{ border: "none", borderTop: "1px solid rgba(0,120,255,0.1)", margin: "24px 0" }} />
 
-                {/* Already voted state */}
                 {voterState?.hasVoted ? (
                   <div style={{ textAlign: "center", padding: "20px 0" }}>
                     <div style={{ fontSize: "11px", letterSpacing: "0.15em", color: "rgba(0,200,80,0.6)", marginBottom: "10px", textTransform: "uppercase" }}>
@@ -1010,7 +938,6 @@ export default function VoterDashboard() {
                       until after the election ends.
                     </div>
 
-                    {/* Candidate selection */}
                     <div style={styles.cardTitle}>
                       <div style={styles.cardTitleDot} />
                       Select Candidate
@@ -1024,44 +951,26 @@ export default function VoterDashboard() {
                           <div
                             key={c.id}
                             className="cand-card"
-                            style={{
-                              ...styles.candidateCard,
-                              ...(selectedCandidate?.id === c.id ? styles.candidateCardSelected : {}),
-                            }}
+                            style={{ ...styles.candidateCard, ...(selectedCandidate?.id === c.id ? styles.candidateCardSelected : {}) }}
                             onClick={() => setSelectedCandidate(c)}
                           >
                             {selectedCandidate?.id === c.id && (
-                              <div style={{
-                                position: "absolute", top: 0, left: 0,
-                                width: "3px", height: "100%",
-                                background: "linear-gradient(180deg, #0064ff, #00c8ff)",
-                              }} />
+                              <div style={{ position: "absolute", top: 0, left: 0, width: "3px", height: "100%", background: "linear-gradient(180deg, #0064ff, #00c8ff)" }} />
                             )}
                             <div style={styles.candidateName}>{c.name}</div>
                             <div style={styles.candidateId}>{c.id}</div>
                             <div style={styles.candidateParty}>{c.party || "Independent"}</div>
                             {selectedCandidate?.id === c.id && (
-                              <div style={{
-                                marginTop: "10px", fontSize: "9px",
-                                color: "#4d9fff", letterSpacing: "0.15em",
-                              }}>
-                                ● SELECTED
-                              </div>
+                              <div style={{ marginTop: "10px", fontSize: "9px", color: "#4d9fff", letterSpacing: "0.15em" }}>● SELECTED</div>
                             )}
                           </div>
                         ))}
                       </div>
                     )}
 
-                    {/* Cast vote button */}
                     <div style={styles.btnRow}>
                       <button
-                        style={{
-                          ...styles.btn,
-                          ...styles.btnSuccess,
-                          opacity: (!selectedCandidate || loading) ? 0.5 : 1,
-                          cursor:  (!selectedCandidate || loading) ? "not-allowed" : "pointer",
-                        }}
+                        style={{ ...styles.btn, ...styles.btnSuccess, opacity: (!selectedCandidate || loading) ? 0.5 : 1, cursor: (!selectedCandidate || loading) ? "not-allowed" : "pointer" }}
                         onClick={handleCastVote}
                         disabled={loading || !selectedCandidate}
                       >
@@ -1081,12 +990,11 @@ export default function VoterDashboard() {
                     {selectedCandidate && (
                       <div style={{ marginTop: "14px", fontSize: "11px", color: "rgba(100,160,255,0.5)", letterSpacing: "0.08em" }}>
                         Voting for: <span style={{ color: "#c0d8ff" }}>{selectedCandidate.name}</span>
-                        {" "}·{" "}
+                        {" · "}
                         <span style={{ color: "rgba(0,150,255,0.5)" }}>{selectedCandidate.party}</span>
                       </div>
                     )}
 
-                    {/* Transaction hash after voting */}
                     {txHash && (
                       <div style={styles.txBox}>
                         <div style={styles.txLabel}>Transaction Hash</div>
@@ -1106,17 +1014,15 @@ export default function VoterDashboard() {
             ) : (
               <div style={styles.card}>
                 <div style={styles.cardAccent} />
-                <div style={styles.emptyState}>
-                  Select an election above to cast your vote
-                </div>
+                <div style={styles.emptyState}>Select an election above to cast your vote</div>
               </div>
             )}
           </div>
         )}
 
-        {/* ════════════════════════════════════════════════════════
+        {/* ═══════════════════════════════════════════
             TAB: RESULTS
-        ════════════════════════════════════════════════════════ */}
+        ═══════════════════════════════════════════ */}
         {activeTab === "results" && (
           <div>
             <div style={styles.card}>
@@ -1126,7 +1032,6 @@ export default function VoterDashboard() {
                 Election Results
               </div>
 
-              {/* Election selector for results */}
               {allElections.length === 0 ? (
                 <div style={styles.emptyState}>No elections available</div>
               ) : (
@@ -1153,11 +1058,8 @@ export default function VoterDashboard() {
 
                   {selectedElection && electionInfo ? (
                     <>
-                      {/* Status */}
                       <div style={{ marginBottom: "20px" }}>
-                        <span style={statusBadgeStyle(electionInfo.status)}>
-                          {electionInfo.status}
-                        </span>
+                        <span style={statusBadgeStyle(electionInfo.status)}>{electionInfo.status}</span>
                         <span style={{ fontSize: "14px", fontWeight: "600", color: "#c0d8ff", marginLeft: "12px" }}>
                           {electionInfo.name}
                         </span>
@@ -1181,35 +1083,22 @@ export default function VoterDashboard() {
                             TURNOUT — {Math.round((electionInfo.votedCount / electionInfo.voterCount) * 100)}%
                           </div>
                           <div style={styles.progressBar}>
-                            <div style={{
-                              ...styles.progressFill,
-                              width: `${(electionInfo.votedCount / electionInfo.voterCount) * 100}%`,
-                            }} />
+                            <div style={{ ...styles.progressFill, width: `${(electionInfo.votedCount / electionInfo.voterCount) * 100}%` }} />
                           </div>
                         </div>
                       )}
 
                       <hr style={{ border: "none", borderTop: "1px solid rgba(0,120,255,0.1)", margin: "24px 0" }} />
 
-                      {/* Winner display */}
                       {electionInfo.winnerDeclared ? (
                         <div style={{ textAlign: "center", padding: "20px 0" }}>
                           <div style={{ fontSize: "10px", letterSpacing: "0.2em", color: "rgba(0,200,80,0.5)", marginBottom: "12px", textTransform: "uppercase" }}>
                             Declared Winner
                           </div>
-                          <div style={{
-                            fontSize: "32px",
-                            fontWeight: "700",
-                            background: "linear-gradient(90deg, #4d9fff, #00c8ff)",
-                            WebkitBackgroundClip: "text",
-                            WebkitTextFillColor: "transparent",
-                            marginBottom: "6px",
-                          }}>
+                          <div style={{ fontSize: "32px", fontWeight: "700", background: "linear-gradient(90deg, #4d9fff, #00c8ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: "6px" }}>
                             {electionInfo.winner}
                           </div>
-                          <div style={{ fontSize: "10px", color: "rgba(0,180,255,0.4)", letterSpacing: "0.15em" }}>
-                            CANDIDATE ID
-                          </div>
+                          <div style={{ fontSize: "10px", color: "rgba(0,180,255,0.4)", letterSpacing: "0.15em" }}>CANDIDATE ID</div>
                         </div>
                       ) : electionInfo.status === "ended" ? (
                         <div style={styles.infoBox}>
@@ -1223,9 +1112,7 @@ export default function VoterDashboard() {
                       )}
                     </>
                   ) : selectedElection ? (
-                    <div style={styles.emptyState}>
-                      <span style={styles.spinner} /> Loading...
-                    </div>
+                    <div style={styles.emptyState}><span style={styles.spinner} /> Loading...</div>
                   ) : (
                     <div style={styles.emptyState}>Select an election to view results</div>
                   )}
@@ -1237,13 +1124,9 @@ export default function VoterDashboard() {
 
       </div>
 
-      {/* ── Toast ──────────────────────────────────────────────────── */}
+      {/* ── Toast ────────────────────────────────────────────────── */}
       {toast && (
-        <div style={{
-          ...styles.toast,
-          ...(toast.type === "error"   ? styles.toastError   : {}),
-          ...(toast.type === "success" ? styles.toastSuccess : {}),
-        }}>
+        <div style={{ ...styles.toast, ...(toast.type === "error" ? styles.toastError : {}), ...(toast.type === "success" ? styles.toastSuccess : {}) }}>
           {toast.type === "success" && "✓ "}
           {toast.type === "error"   && "✗ "}
           {toast.msg}
@@ -1253,9 +1136,9 @@ export default function VoterDashboard() {
   );
 }
 
-// ── Sub-component: Eligible Election Row ──────────────────────────────
+// ── Sub-component: Eligible Election Row ─────────────────────────────
 function EligibleElectionRow({ addr, isSelected, wallet, onClick, styles, shortAddr, statusBadgeStyle, getProvider, ElectionABI }) {
-  const [info, setInfo] = useState(null);
+  const [info, setInfo]                   = useState(null);
   const [voterHasVoted, setVoterHasVoted] = useState(null);
 
   useEffect(() => {
@@ -1272,37 +1155,41 @@ function EligibleElectionRow({ addr, isSelected, wallet, onClick, styles, shortA
           contract.winnerDeclared(),
           contract.WINNER(),
         ]);
-        const s = Number(start);
-        const e = Number(end);
+        const s   = Number(start);
+        const e   = Number(end);
+        const now = Math.floor(Date.now() / 1000);
         setInfo({
-          name, voterCount: Number(voterCount),
-          votedCount: Number(votedCount),
-          startTime: s, endTime: e,
-          status: (() => {
-            const now = Math.floor(Date.now() / 1000);
-            if (now < s) return "upcoming";
-            if (now <= e) return "active";
-            return "ended";
-          })(),
+          name,
+          voterCount:     Number(voterCount),
+          votedCount:     Number(votedCount),
+          startTime:      s,
+          endTime:        e,
+          status:         now < s ? "upcoming" : now <= e ? "active" : "ended",
           winnerDeclared: declared,
           winner,
         });
+
+        // FIX 5: wrapped in its own try/catch so a revert here never breaks
+        //        the card render — badge simply won't show if it fails.
         if (wallet) {
-          const [, , hasVoted] = await contract.getVoterInfo(wallet);
-          setVoterHasVoted(hasVoted);
+          try {
+            const [, , hasVoted] = await contract.getVoterInfo(wallet);
+            setVoterHasVoted(hasVoted);
+          } catch {
+            setVoterHasVoted(null);
+          }
         }
-      } catch {}
+      } catch (err) {
+        console.warn("[EligibleElectionRow] load error for", addr, err);
+      }
     }
     load();
-  }, [addr, wallet]);
+  }, [addr, wallet]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div
       className="el-row"
-      style={{
-        ...styles.electionListCard,
-        ...(isSelected ? styles.electionListCardActive : {}),
-      }}
+      style={{ ...styles.electionListCard, ...(isSelected ? styles.electionListCardActive : {}) }}
       onClick={onClick}
     >
       {isSelected && (
@@ -1314,14 +1201,10 @@ function EligibleElectionRow({ addr, isSelected, wallet, onClick, styles, shortA
           <div style={{ fontSize: "14px", fontWeight: "600", color: "#c0d8ff", marginBottom: "4px", letterSpacing: "0.04em" }}>
             {info?.name ?? "Loading..."}
           </div>
-          <div style={{ fontSize: "10px", color: "rgba(0,150,255,0.4)", fontFamily: "monospace" }}>
-            {addr}
-          </div>
+          <div style={{ fontSize: "10px", color: "rgba(0,150,255,0.4)", fontFamily: "monospace" }}>{addr}</div>
         </div>
         <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
-          {info && (
-            <span style={statusBadgeStyle(info.status)}>{info.status}</span>
-          )}
+          {info && <span style={statusBadgeStyle(info.status)}>{info.status}</span>}
           {voterHasVoted !== null && (
             <span style={{ ...styles.badge, ...(voterHasVoted ? styles.badgeVoted : styles.badgeEligible) }}>
               {voterHasVoted ? "✓ voted" : "eligible"}
@@ -1333,10 +1216,10 @@ function EligibleElectionRow({ addr, isSelected, wallet, onClick, styles, shortA
       {info && (
         <div style={{ display: "flex", gap: "20px", marginTop: "12px", flexWrap: "wrap" }}>
           {[
-            ["Voters",      `${info.votedCount} / ${info.voterCount}`],
-            ["Opens",       new Date(info.startTime * 1000).toLocaleDateString()],
-            ["Closes",      new Date(info.endTime   * 1000).toLocaleDateString()],
-            ["Winner",      info.winnerDeclared ? info.winner : "TBD"],
+            ["Voters",  `${info.votedCount} / ${info.voterCount}`],
+            ["Opens",   new Date(info.startTime * 1000).toLocaleDateString()],
+            ["Closes",  new Date(info.endTime   * 1000).toLocaleDateString()],
+            ["Winner",  info.winnerDeclared ? info.winner : "TBD"],
           ].map(([k, v]) => (
             <div key={k}>
               <div style={{ fontSize: "9px", color: "rgba(0,150,255,0.4)", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "2px" }}>{k}</div>

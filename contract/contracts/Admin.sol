@@ -2,10 +2,9 @@
 
 pragma solidity ^0.8.28;
 
-import {Election} from "./Election.sol";
+import { Election } from "./Election.sol";
 
 contract Admin {
-
   address public immutable SUPER_ADMIN;
 
   address[] public listOfElection;

@@ -8,14 +8,13 @@ contract Election {
   uint256 public immutable ELECTION_START_TIME;
   uint256 public immutable ELECTION_END_TIME;
   string public WINNER;
-  bool public winnerDeclared;
+  bool public winnerDeclared = false;
 
-  // fetch voter transaction, addvoter, voting
   struct Voter {
     string voterId;
     address walletAddress;
     bool hasVoted;
-    string encryptedVote;
+    string[] encryptedVoteVector;
   }
 
   address[] voterList;
@@ -23,7 +22,6 @@ contract Election {
 
   mapping(address => Voter) voterMap;
 
-  // fetch candidate, addCandidate, removeCandidate, vote increase
   struct Candidate {
     string candidateId;
     string candidateName;
@@ -35,7 +33,7 @@ contract Election {
   mapping(string => Candidate) candidateMap;
 
   event VoterAdded(address indexed walletAddress);
-  event CandidateAdded(string indexed candidateId);
+  event CandidateAdded(string candidateId);
   event VoteCasted(address indexed walletAddress);
   event WinnerAnnounced(string winnerId);
   event ElectionEnded(uint256 timestamp);
@@ -44,9 +42,9 @@ contract Election {
 
   constructor(address _admin, string memory _electionName, uint256 _startTime, uint256 _endTime) {
     require(_admin != address(0), "Invalid wallet address");
-    require(bytes(_electionName).length != 0, "Invalid election name."); // optional
-    require(block.timestamp < _startTime, "Start time must be in future.");
-    require(_startTime < _endTime, "End time must be after Start time.");
+    require(bytes(_electionName).length != 0, "Invalid election name"); // optional
+    require(block.timestamp < _startTime, "Start time must be in future");
+    require(_startTime < _endTime, "End time must be after Start time");
 
     ADMIN = _admin;
     ELECTION_NAME = _electionName;
@@ -55,7 +53,7 @@ contract Election {
   }
 
   modifier onlyAdmin() {
-    require(msg.sender == ADMIN, "Not the ADMIN.");
+    require(msg.sender == ADMIN, "Not the ADMIN");
     _;
   }
 
@@ -65,18 +63,18 @@ contract Election {
   }
 
   modifier onlyBeforeElection() {
-    require(block.timestamp < ELECTION_START_TIME, "Election not started.");
+    require(block.timestamp < ELECTION_START_TIME, "Election started");
     _;
   }
 
   modifier onlyDuringElection() {
-    require(block.timestamp >= ELECTION_START_TIME, "Election not started.");
-    require(block.timestamp <= ELECTION_END_TIME, "Election ended.");
+    require(block.timestamp >= ELECTION_START_TIME, "Election not started");
+    require(block.timestamp <= ELECTION_END_TIME, "Election ended");
     _;
   }
 
   modifier onlyAfterElection() {
-    require(block.timestamp > ELECTION_END_TIME, "Election not ended.");
+    require(block.timestamp > ELECTION_END_TIME, "Election not ended");
     _;
   }
 
@@ -87,7 +85,7 @@ contract Election {
     require(_walletAddress != address(0), "Invalid wallet address");
     require(bytes(voterMap[_walletAddress].voterId).length == 0, "Voter is already registered");
 
-    Voter memory _newVoter = Voter(_voterId, _walletAddress, false, "");
+    Voter memory _newVoter = Voter(_voterId, _walletAddress, false, new string[](0));
     voterList.push(_walletAddress);
     voterMap[_walletAddress] = _newVoter;
 
@@ -95,8 +93,8 @@ contract Election {
   }
 
   function addCandidate(string memory _candidateId, string memory _candidateName, string memory _candidateParty) public onlyAdmin onlyBeforeElection {
-    require(bytes(_candidateId).length != 0, "Invalid candidate ID.");
-    require(bytes(candidateMap[_candidateId].candidateId).length == 0, "Candidate already exists.");
+    require(bytes(_candidateId).length != 0, "Invalid candidate ID");
+    require(bytes(candidateMap[_candidateId].candidateId).length == 0, "Candidate already exists");
 
     Candidate memory _newCandidate = Candidate(_candidateId, _candidateName, _candidateParty);
     candidateList.push(_candidateId);
@@ -105,35 +103,19 @@ contract Election {
     emit CandidateAdded(_candidateId);
   }
 
-  function castVote(string memory _encryptedVote) public onlyVoter onlyDuringElection {
+  // vote casting - homomorphic encryption
+  function castVote(string[] memory _encryptedVoteVector) public onlyVoter onlyDuringElection {
     require(voterMap[msg.sender].walletAddress != address(0), "Not registered voter");
-    require(voterMap[msg.sender].hasVoted == false, "Your vote is already casted.");
+    require(voterMap[msg.sender].hasVoted == false, "Already voted");
 
     voterMap[msg.sender].hasVoted = true;
-    voterMap[msg.sender].encryptedVote = _encryptedVote;
+    voterMap[msg.sender].encryptedVoteVector = _encryptedVoteVector;
     votedVoters.push(msg.sender);
 
     emit VoteCasted(msg.sender);
   }
 
-  function getVoterInfo(address _walletAddress) public view onlyAdmin returns(string memory, address, bool, string memory) {
-    return (
-      voterMap[_walletAddress].voterId,
-      voterMap[_walletAddress].walletAddress,
-      voterMap[_walletAddress].hasVoted,
-      voterMap[_walletAddress].encryptedVote
-    );
-  }
-
-  function getCandidateInfo(string memory _candidateId) public view returns(string memory, string memory, string memory) {
-    return (
-      candidateMap[_candidateId].candidateId,
-      candidateMap[_candidateId].candidateName, 
-      candidateMap[_candidateId].candidateParty
-    );
-  }
-
-  // decryption and count max votes (trigger)
+  // decryption of tally votes and count max votes (trigger)
   function announceWinner(string memory _winnerId) public onlyAdmin onlyAfterElection {
     require(!winnerDeclared, "Winner already declared");
     require(bytes(candidateMap[_winnerId].candidateId).length != 0, "Invalid candidate");
@@ -146,8 +128,31 @@ contract Election {
 
 
 
+
+  function getVoterInfo(address _walletAddress) public view returns(string memory, address, bool, string[] memory) {
+    require(msg.sender == _walletAddress || msg.sender == ADMIN, "Unauthorized");
+    return (
+      voterMap[_walletAddress].voterId,
+      voterMap[_walletAddress].walletAddress,
+      voterMap[_walletAddress].hasVoted,
+      voterMap[_walletAddress].encryptedVoteVector
+    );
+  }
+
+  function getCandidateInfo(string memory _candidateId) public view returns(string memory, string memory, string memory) {
+    return (
+      candidateMap[_candidateId].candidateId,
+      candidateMap[_candidateId].candidateName, 
+      candidateMap[_candidateId].candidateParty
+    );
+  }
+
   function getElectionName() public view returns(string memory) {
     return ELECTION_NAME;
+  }
+
+  function getElectionAdmin() public view returns(address) {
+    return ADMIN;
   }
 
   function getStartTime() public view returns(uint256) {
@@ -156,6 +161,10 @@ contract Election {
 
   function getEndTime() public view returns(uint256) {
     return ELECTION_END_TIME;
+  }
+
+  function getWinner() public view returns(string memory) {
+    return WINNER;
   }
 
   function getRegisteredVoterCount() public view returns(uint256) {
@@ -168,5 +177,17 @@ contract Election {
 
   function getCandidateCount() public view returns(uint256) {
     return candidateList.length;
+  }
+
+  function getVoterList() public view onlyAdmin returns(address[] memory) {
+    return voterList;
+  }
+
+  function getVotedVoterList() public view onlyAdmin returns(address[] memory) {
+    return votedVoters;
+  }
+
+  function getCandidateList() public view returns(string[] memory) {
+    return candidateList;
   }
 }
