@@ -2,11 +2,24 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
+import { encryptVoteVector } from "@/lib/encryptVote";
 
-import AdminABI from "@/abi/Admin.json";
+import AdminABI    from "@/abi/Admin.json";
 import ElectionABI from "@/abi/Election.json";
 
-const ADMIN_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ADMIN_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000";
+// ── Make sure your Election.json ABI includes these updated signatures:
+//
+//   "function castVote(string[] calldata _encryptedVoteVector) public"
+//   "function getVoterInfo(address) public view returns (string,address,bool,string[])"
+//   "function isRegisteredVoter(address) public view returns (bool)"
+//   "function getCandidateList() public view returns (string[] memory)"
+//   "event CandidateAdded(string candidateId)"          ← NOT indexed
+//
+// ─────────────────────────────────────────────────────────────────────
+
+const ADMIN_CONTRACT_ADDRESS =
+  process.env.NEXT_PUBLIC_ADMIN_CONTRACT_ADDRESS ||
+  "0x0000000000000000000000000000000000000000";
 
 // ── Styles ────────────────────────────────────────────────────────────
 const styles = {
@@ -30,299 +43,167 @@ const styles = {
     zIndex: 0,
   },
   glowOrb1: {
-    position: "fixed",
-    top: "-20%",
-    right: "-10%",
-    width: "600px",
-    height: "600px",
-    borderRadius: "50%",
+    position: "fixed", top: "-20%", right: "-10%",
+    width: "600px", height: "600px", borderRadius: "50%",
     background: "radial-gradient(circle, rgba(0,100,255,0.12) 0%, transparent 70%)",
-    pointerEvents: "none",
-    zIndex: 0,
+    pointerEvents: "none", zIndex: 0,
   },
   glowOrb2: {
-    position: "fixed",
-    bottom: "-20%",
-    left: "-10%",
-    width: "500px",
-    height: "500px",
-    borderRadius: "50%",
+    position: "fixed", bottom: "-20%", left: "-10%",
+    width: "500px", height: "500px", borderRadius: "50%",
     background: "radial-gradient(circle, rgba(0,200,255,0.08) 0%, transparent 70%)",
-    pointerEvents: "none",
-    zIndex: 0,
+    pointerEvents: "none", zIndex: 0,
   },
   container: {
-    position: "relative",
-    zIndex: 1,
-    maxWidth: "1200px",
-    margin: "0 auto",
-    padding: "0 24px 60px",
+    position: "relative", zIndex: 1,
+    maxWidth: "1200px", margin: "0 auto", padding: "0 24px 60px",
   },
   header: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
+    display: "flex", alignItems: "center", justifyContent: "space-between",
     padding: "28px 0 40px",
-    borderBottom: "1px solid rgba(0,120,255,0.2)",
-    marginBottom: "40px",
+    borderBottom: "1px solid rgba(0,120,255,0.2)", marginBottom: "40px",
   },
   headerLeft: { display: "flex", alignItems: "center", gap: "14px" },
   logoMark: {
-    width: "36px",
-    height: "36px",
+    width: "36px", height: "36px",
     background: "linear-gradient(135deg, #0064ff, #00c8ff)",
     clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
-    flexShrink: 0,
-    boxShadow: "0 0 20px rgba(0,100,255,0.5)",
+    flexShrink: 0, boxShadow: "0 0 20px rgba(0,100,255,0.5)",
   },
   title: {
-    fontSize: "20px",
-    fontWeight: "700",
-    letterSpacing: "0.15em",
+    fontSize: "20px", fontWeight: "700", letterSpacing: "0.15em",
     textTransform: "uppercase",
     background: "linear-gradient(90deg, #4d9fff, #00c8ff)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-    margin: 0,
+    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", margin: 0,
   },
   subtitle: {
-    fontSize: "11px",
-    color: "rgba(0,180,255,0.5)",
-    letterSpacing: "0.2em",
-    textTransform: "uppercase",
-    marginTop: "2px",
+    fontSize: "11px", color: "rgba(0,180,255,0.5)",
+    letterSpacing: "0.2em", textTransform: "uppercase", marginTop: "2px",
   },
   walletBtn: {
-    padding: "10px 20px",
-    background: "transparent",
-    border: "1px solid rgba(0,120,255,0.5)",
-    color: "#4d9fff",
-    fontFamily: "inherit",
-    fontSize: "11px",
-    letterSpacing: "0.12em",
-    textTransform: "uppercase",
-    cursor: "pointer",
-    transition: "all 0.2s",
+    padding: "10px 20px", background: "transparent",
+    border: "1px solid rgba(0,120,255,0.5)", color: "#4d9fff",
+    fontFamily: "inherit", fontSize: "11px", letterSpacing: "0.12em",
+    textTransform: "uppercase", cursor: "pointer", transition: "all 0.2s",
   },
-  walletBtnConnected: {
-    borderColor: "rgba(0,200,100,0.5)",
-    color: "#00c864",
-  },
+  walletBtnConnected: { borderColor: "rgba(0,200,100,0.5)", color: "#00c864" },
   tabNav: {
-    display: "flex",
-    gap: "4px",
-    marginBottom: "36px",
+    display: "flex", gap: "4px", marginBottom: "36px",
     borderBottom: "1px solid rgba(0,120,255,0.15)",
   },
   tab: {
-    padding: "12px 22px",
-    background: "transparent",
-    border: "none",
-    borderBottom: "2px solid transparent",
-    color: "rgba(100,160,255,0.5)",
-    fontFamily: "inherit",
-    fontSize: "11px",
-    letterSpacing: "0.15em",
-    textTransform: "uppercase",
-    cursor: "pointer",
-    transition: "all 0.2s",
+    padding: "12px 22px", background: "transparent", border: "none",
+    borderBottom: "2px solid transparent", color: "rgba(100,160,255,0.5)",
+    fontFamily: "inherit", fontSize: "11px", letterSpacing: "0.15em",
+    textTransform: "uppercase", cursor: "pointer", transition: "all 0.2s",
     marginBottom: "-1px",
   },
-  tabActive: {
-    color: "#4d9fff",
-    borderBottomColor: "#4d9fff",
-  },
+  tabActive: { color: "#4d9fff", borderBottomColor: "#4d9fff" },
   card: {
-    background: "rgba(0,8,20,0.8)",
-    border: "1px solid rgba(0,120,255,0.2)",
-    padding: "28px",
-    marginBottom: "20px",
-    position: "relative",
+    background: "rgba(0,8,20,0.8)", border: "1px solid rgba(0,120,255,0.2)",
+    padding: "28px", marginBottom: "20px", position: "relative",
     backdropFilter: "blur(10px)",
   },
   cardAccent: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: "3px",
-    height: "100%",
+    position: "absolute", top: 0, left: 0, width: "3px", height: "100%",
     background: "linear-gradient(180deg, #0064ff, #00c8ff)",
   },
   cardTitle: {
-    fontSize: "11px",
-    letterSpacing: "0.2em",
-    textTransform: "uppercase",
-    color: "rgba(0,180,255,0.6)",
-    marginBottom: "20px",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
+    fontSize: "11px", letterSpacing: "0.2em", textTransform: "uppercase",
+    color: "rgba(0,180,255,0.6)", marginBottom: "20px",
+    display: "flex", alignItems: "center", gap: "8px",
   },
   cardTitleDot: {
-    width: "6px",
-    height: "6px",
-    borderRadius: "50%",
-    background: "#0064ff",
-    boxShadow: "0 0 8px #0064ff",
+    width: "6px", height: "6px", borderRadius: "50%",
+    background: "#0064ff", boxShadow: "0 0 8px #0064ff",
   },
   statsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: "16px",
-    marginBottom: "36px",
+    display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: "16px", marginBottom: "36px",
   },
   statCard: {
-    background: "rgba(0,8,20,0.9)",
-    border: "1px solid rgba(0,120,255,0.15)",
-    padding: "20px",
-    position: "relative",
-    overflow: "hidden",
+    background: "rgba(0,8,20,0.9)", border: "1px solid rgba(0,120,255,0.15)",
+    padding: "20px", position: "relative", overflow: "hidden",
   },
   statValue: {
-    fontSize: "32px",
-    fontWeight: "700",
+    fontSize: "32px", fontWeight: "700",
     background: "linear-gradient(90deg, #4d9fff, #00c8ff)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-    lineHeight: 1,
-    marginBottom: "6px",
+    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+    lineHeight: 1, marginBottom: "6px",
   },
   statLabel: {
-    fontSize: "10px",
-    letterSpacing: "0.18em",
-    textTransform: "uppercase",
+    fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase",
     color: "rgba(100,150,255,0.5)",
   },
   statGlow: {
-    position: "absolute",
-    bottom: "-20px",
-    right: "-20px",
-    width: "80px",
-    height: "80px",
-    borderRadius: "50%",
+    position: "absolute", bottom: "-20px", right: "-20px",
+    width: "80px", height: "80px", borderRadius: "50%",
     background: "radial-gradient(circle, rgba(0,100,255,0.1) 0%, transparent 70%)",
   },
   label: {
-    display: "block",
-    fontSize: "10px",
-    letterSpacing: "0.18em",
-    textTransform: "uppercase",
-    color: "rgba(0,180,255,0.5)",
-    marginBottom: "8px",
+    display: "block", fontSize: "10px", letterSpacing: "0.18em",
+    textTransform: "uppercase", color: "rgba(0,180,255,0.5)", marginBottom: "8px",
   },
   formGroup: { marginBottom: "18px" },
   input: {
-    width: "100%",
-    padding: "12px 14px",
-    background: "rgba(0,20,40,0.8)",
-    border: "1px solid rgba(0,120,255,0.25)",
-    color: "#c0d8ff",
-    fontFamily: "'Courier New', monospace",
-    fontSize: "13px",
-    outline: "none",
-    transition: "border-color 0.2s",
-    boxSizing: "border-box",
+    width: "100%", padding: "12px 14px", background: "rgba(0,20,40,0.8)",
+    border: "1px solid rgba(0,120,255,0.25)", color: "#c0d8ff",
+    fontFamily: "'Courier New', monospace", fontSize: "13px",
+    outline: "none", transition: "border-color 0.2s", boxSizing: "border-box",
   },
   btn: {
     padding: "12px 24px",
     background: "linear-gradient(135deg, rgba(0,80,200,0.8), rgba(0,150,255,0.6))",
-    border: "1px solid rgba(0,150,255,0.4)",
-    color: "#c0e8ff",
-    fontFamily: "'Courier New', monospace",
-    fontSize: "11px",
-    letterSpacing: "0.15em",
-    textTransform: "uppercase",
-    cursor: "pointer",
-    transition: "all 0.2s",
+    border: "1px solid rgba(0,150,255,0.4)", color: "#c0e8ff",
+    fontFamily: "'Courier New', monospace", fontSize: "11px",
+    letterSpacing: "0.15em", textTransform: "uppercase",
+    cursor: "pointer", transition: "all 0.2s",
   },
   btnSuccess: {
     background: "linear-gradient(135deg, rgba(0,150,80,0.7), rgba(0,220,100,0.5))",
-    border: "1px solid rgba(0,200,80,0.4)",
-    color: "#a0ffcc",
+    border: "1px solid rgba(0,200,80,0.4)", color: "#a0ffcc",
   },
-  btnDanger: {
-    background: "linear-gradient(135deg, rgba(200,0,50,0.6), rgba(255,50,80,0.4))",
-    border: "1px solid rgba(255,50,80,0.4)",
-    color: "#ffb0c0",
-  },
-  btnRow: {
-    display: "flex",
-    gap: "12px",
-    marginTop: "20px",
-    flexWrap: "wrap",
-  },
+  btnRow: { display: "flex", gap: "12px", marginTop: "20px", flexWrap: "wrap" },
   toast: {
-    position: "fixed",
-    bottom: "28px",
-    right: "28px",
-    padding: "14px 20px",
-    background: "rgba(0,8,20,0.95)",
-    border: "1px solid rgba(0,120,255,0.4)",
-    color: "#4d9fff",
-    fontFamily: "monospace",
-    fontSize: "12px",
-    letterSpacing: "0.08em",
-    maxWidth: "420px",
-    zIndex: 1000,
-    backdropFilter: "blur(10px)",
-    boxShadow: "0 0 30px rgba(0,100,255,0.2)",
-    animation: "slideIn 0.3s ease",
+    position: "fixed", bottom: "28px", right: "28px",
+    padding: "14px 20px", background: "rgba(0,8,20,0.95)",
+    border: "1px solid rgba(0,120,255,0.4)", color: "#4d9fff",
+    fontFamily: "monospace", fontSize: "12px", letterSpacing: "0.08em",
+    maxWidth: "420px", zIndex: 1000, backdropFilter: "blur(10px)",
+    boxShadow: "0 0 30px rgba(0,100,255,0.2)", animation: "slideIn 0.3s ease",
   },
   toastError:   { borderColor: "rgba(255,50,80,0.4)",  color: "#ff8090" },
   toastSuccess: { borderColor: "rgba(0,200,80,0.4)",   color: "#00c864" },
   emptyState: {
-    textAlign: "center",
-    padding: "60px 20px",
-    color: "rgba(0,150,255,0.3)",
-    fontSize: "12px",
-    letterSpacing: "0.15em",
-    textTransform: "uppercase",
+    textAlign: "center", padding: "60px 20px", color: "rgba(0,150,255,0.3)",
+    fontSize: "12px", letterSpacing: "0.15em", textTransform: "uppercase",
   },
   spinner: {
-    display: "inline-block",
-    width: "12px",
-    height: "12px",
-    border: "2px solid rgba(0,120,255,0.2)",
-    borderTopColor: "#4d9fff",
-    borderRadius: "50%",
-    animation: "spin 0.7s linear infinite",
-    marginRight: "8px",
-    verticalAlign: "middle",
+    display: "inline-block", width: "12px", height: "12px",
+    border: "2px solid rgba(0,120,255,0.2)", borderTopColor: "#4d9fff",
+    borderRadius: "50%", animation: "spin 0.7s linear infinite",
+    marginRight: "8px", verticalAlign: "middle",
   },
   infoRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "10px 0",
-    borderBottom: "1px solid rgba(0,120,255,0.08)",
-    fontSize: "12px",
+    display: "flex", justifyContent: "space-between",
+    padding: "10px 0", borderBottom: "1px solid rgba(0,120,255,0.08)", fontSize: "12px",
   },
   infoLabel: {
-    color: "rgba(100,150,255,0.5)",
-    letterSpacing: "0.1em",
-    fontSize: "10px",
-    textTransform: "uppercase",
+    color: "rgba(100,150,255,0.5)", letterSpacing: "0.1em",
+    fontSize: "10px", textTransform: "uppercase",
   },
   infoValue: { color: "#c0d8ff", fontFamily: "monospace" },
   progressBar: {
-    height: "3px",
-    background: "rgba(0,80,160,0.3)",
-    marginTop: "12px",
-    overflow: "hidden",
+    height: "3px", background: "rgba(0,80,160,0.3)", marginTop: "12px", overflow: "hidden",
   },
   progressFill: {
-    height: "100%",
-    background: "linear-gradient(90deg, #0064ff, #00c8ff)",
-    transition: "width 0.5s ease",
-    boxShadow: "0 0 8px #0064ff",
+    height: "100%", background: "linear-gradient(90deg, #0064ff, #00c8ff)",
+    transition: "width 0.5s ease", boxShadow: "0 0 8px #0064ff",
   },
   badge: {
-    display: "inline-block",
-    padding: "3px 10px",
-    fontSize: "9px",
-    letterSpacing: "0.15em",
-    textTransform: "uppercase",
-    borderRadius: "2px",
-    marginBottom: "10px",
+    display: "inline-block", padding: "3px 10px", fontSize: "9px",
+    letterSpacing: "0.15em", textTransform: "uppercase",
+    borderRadius: "2px", marginBottom: "10px",
   },
   badgeActive:   { background: "rgba(0,200,100,0.1)",   border: "1px solid rgba(0,200,100,0.3)",   color: "#00c864" },
   badgeUpcoming: { background: "rgba(0,100,255,0.1)",   border: "1px solid rgba(0,100,255,0.3)",   color: "#4d9fff" },
@@ -330,69 +211,46 @@ const styles = {
   badgeVoted:    { background: "rgba(0,200,100,0.08)",  border: "1px solid rgba(0,200,100,0.25)",  color: "#00c864" },
   badgeEligible: { background: "rgba(0,100,255,0.08)",  border: "1px solid rgba(0,100,255,0.25)",  color: "#4d9fff" },
   candidateGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-    gap: "14px",
-    marginTop: "16px",
+    display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+    gap: "14px", marginTop: "16px",
   },
   candidateCard: {
-    background: "rgba(0,10,28,0.9)",
-    border: "1px solid rgba(0,120,255,0.2)",
-    padding: "20px",
-    cursor: "pointer",
-    transition: "all 0.2s",
-    position: "relative",
-    overflow: "hidden",
+    background: "rgba(0,10,28,0.9)", border: "1px solid rgba(0,120,255,0.2)",
+    padding: "20px", cursor: "pointer", transition: "all 0.2s",
+    position: "relative", overflow: "hidden",
   },
   candidateCardSelected: {
-    borderColor: "rgba(0,180,255,0.7)",
-    background: "rgba(0,40,90,0.5)",
+    borderColor: "rgba(0,180,255,0.7)", background: "rgba(0,40,90,0.5)",
     boxShadow: "0 0 24px rgba(0,100,255,0.18)",
   },
   candidateName:  { fontSize: "15px", fontWeight: "600", color: "#c0d8ff", marginBottom: "4px", letterSpacing: "0.04em" },
   candidateId:    { fontSize: "10px", color: "rgba(0,150,255,0.45)", fontFamily: "monospace", letterSpacing: "0.08em", marginBottom: "6px" },
   candidateParty: { fontSize: "11px", color: "rgba(100,160,255,0.6)", letterSpacing: "0.08em" },
   txBox: {
-    marginTop: "20px",
-    padding: "16px",
-    background: "rgba(0,200,80,0.04)",
-    border: "1px solid rgba(0,200,80,0.2)",
+    marginTop: "20px", padding: "16px",
+    background: "rgba(0,200,80,0.04)", border: "1px solid rgba(0,200,80,0.2)",
   },
   txLabel: { fontSize: "9px", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(0,200,80,0.5)", marginBottom: "6px" },
   txHash:  { fontSize: "11px", color: "#00c864", fontFamily: "monospace", wordBreak: "break-all", letterSpacing: "0.04em" },
   electionListCard: {
-    background: "rgba(0,8,20,0.8)",
-    border: "1px solid rgba(0,120,255,0.2)",
-    padding: "20px",
-    marginBottom: "12px",
-    position: "relative",
-    cursor: "pointer",
-    transition: "all 0.2s",
-    overflow: "hidden",
+    background: "rgba(0,8,20,0.8)", border: "1px solid rgba(0,120,255,0.2)",
+    padding: "20px", marginBottom: "12px", position: "relative",
+    cursor: "pointer", transition: "all 0.2s", overflow: "hidden",
   },
   electionListCardActive: {
-    borderColor: "rgba(0,180,255,0.5)",
-    background: "rgba(0,30,70,0.4)",
+    borderColor: "rgba(0,180,255,0.5)", background: "rgba(0,30,70,0.4)",
     boxShadow: "0 0 18px rgba(0,100,255,0.12)",
   },
   warningBox: {
-    padding: "12px 16px",
-    background: "rgba(255,150,0,0.05)",
-    border: "1px solid rgba(255,150,0,0.2)",
-    fontSize: "11px",
-    color: "rgba(255,180,50,0.8)",
-    letterSpacing: "0.1em",
-    marginBottom: "16px",
+    padding: "12px 16px", background: "rgba(255,150,0,0.05)",
+    border: "1px solid rgba(255,150,0,0.2)", fontSize: "11px",
+    color: "rgba(255,180,50,0.8)", letterSpacing: "0.1em", marginBottom: "16px",
   },
   infoBox: {
-    padding: "12px 16px",
-    background: "rgba(0,100,255,0.05)",
-    border: "1px solid rgba(0,100,255,0.15)",
-    fontSize: "11px",
-    color: "rgba(100,180,255,0.7)",
-    letterSpacing: "0.08em",
-    lineHeight: 1.6,
-    marginBottom: "16px",
+    padding: "12px 16px", background: "rgba(0,100,255,0.05)",
+    border: "1px solid rgba(0,100,255,0.15)", fontSize: "11px",
+    color: "rgba(100,180,255,0.7)", letterSpacing: "0.08em",
+    lineHeight: 1.6, marginBottom: "16px",
   },
 };
 
@@ -452,7 +310,6 @@ export default function VoterDashboard() {
       const addr   = await signer.getAddress();
       setWallet(addr);
       showToast(`Connected: ${shortAddr(addr)}`, "success");
-      await loadAllElections(addr);
     } catch (e) {
       showToast(e.message, "error");
     } finally {
@@ -461,10 +318,8 @@ export default function VoterDashboard() {
   };
 
   // ── Load all elections + eligibility check ────────────────────────────
-  // FIX 1: switched to Promise.allSettled so one failed call never silently
-  //        blocks the entire eligible list from being built.
-  //        If getVoterInfo is onlyAdmin in your contract, add a public
-  //        isRegisteredVoter(address) view function and call that instead.
+  // Uses isRegisteredVoter() instead of getVoterInfo() — no auth restriction,
+  // safe to call from a provider (no signer / msg.sender = address(0)).
   const loadAllElections = async (voterAddr) => {
     try {
       const provider = getProvider();
@@ -478,17 +333,16 @@ export default function VoterDashboard() {
       const eligible = [];
       const results  = await Promise.allSettled(
         reversed.map(async (addr) => {
-          const election = new ethers.Contract(addr, ElectionABI, provider);
-          const [voterId] = await election.getVoterInfo(voterAddr);
-          if (voterId && voterId.length > 0) eligible.push(addr);
+          const election  = new ethers.Contract(addr, ElectionABI, provider);
+          // isRegisteredVoter() is a public view — no msg.sender restriction
+          const isEligible = await election.isRegisteredVoter(voterAddr);
+          if (isEligible) eligible.push(addr);
         })
       );
 
-      // Surface per-election errors in the console so they're visible in dev
       results.forEach((r, i) => {
-        if (r.status === "rejected") {
-          console.warn(`[eligibility] ${reversed[i]}:`, r.reason?.message ?? r.reason);
-        }
+        if (r.status === "rejected")
+          console.error(`[eligibility] ${reversed[i]}:`, r.reason?.message ?? r.reason);
       });
 
       setEligible(eligible);
@@ -497,20 +351,37 @@ export default function VoterDashboard() {
     }
   };
 
-  // ── FIX 2: On mount, read already-connected account WITHOUT prompting ─
-  // Original code passed null → eligibility check was always skipped on load.
-  // eth_accounts returns existing accounts silently (no MetaMask popup).
+  useEffect(() => {
+    if(wallet) loadAllElections(wallet);
+  }, [wallet]);
+
+  // ── On mount: read already-connected account without prompting ────────
   useEffect(() => {
     if (typeof window === "undefined" || !window.ethereum) return;
-
     window.ethereum
       .request({ method: "eth_accounts" })
       .then((accounts) => {
         const addr = accounts[0] ?? null;
         if (addr) setWallet(addr);
-        loadAllElections(addr); // real address, or null if not connected
+        else loadAllElections(null);
       })
       .catch(() => loadAllElections(null));
+
+      const handleAccountChange = (accounts) => {
+        const addr = accounts[0] ?? null;
+        setWallet(addr);
+        setSelected(null);
+        setElectionInfo(null);
+        setCandidates([]);
+        setVoterState(null);
+        setEligible([]);
+        if(addr) loadAllElections(addr);
+      };
+
+      return () => {
+        window.ethereum.removeListener("accountsChanged", handleAccountChange);
+      };
+
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load election details + voter state + candidates ──────────────────
@@ -533,22 +404,15 @@ export default function VoterDashboard() {
 
       const s = Number(start);
       const e = Number(end);
-
       setElectionInfo({
-        name,
-        startTime:      s,
-        endTime:        e,
-        voterCount:     Number(voterCount),
-        votedCount:     Number(votedCount),
+        name, startTime: s, endTime: e,
+        voterCount: Number(voterCount), votedCount: Number(votedCount),
         candidateCount: Number(candCount),
-        winnerDeclared: declared,
-        winner,
-        status:         getStatus(s, e),
+        winnerDeclared: declared, winner,
+        status: getStatus(s, e),
       });
 
-      // FIX 3: wallet state may not yet reflect the just-connected account when
-      //        loadElectionDetails is called right after setWallet(). Read from
-      //        MetaMask directly as a reliable fallback.
+      // Reliably read active wallet — setWallet() may not have flushed yet
       let activeWallet = wallet;
       if (!activeWallet) {
         try {
@@ -557,49 +421,38 @@ export default function VoterDashboard() {
         } catch { /* ignore */ }
       }
 
+      // getVoterInfo requires msg.sender == voter OR admin
+      // Called with a signer here, so msg.sender == connected wallet ✓
       if (activeWallet) {
         try {
-          const [voterId, , hasVoted] = await contract.getVoterInfo(activeWallet);
+          const signer          = await getSigner();
+          const signedContract  = new ethers.Contract(addr, ElectionABI, signer);
+          const [voterId, , hasVoted] = await signedContract.getVoterInfo(activeWallet);
           setVoterState({ voterId, hasVoted });
         } catch {
+          // Voter not registered in this election
           setVoterState(null);
         }
       }
 
-      // ── Load candidates ───────────────────────────────────────────────
-      // FIX 4: removed the dead indexed-event block that always returned null.
-      //        Only use the non-indexed signature. Your Solidity event MUST be:
-      //          event CandidateAdded(string candidateId);        ✅
-      //        NOT:
-      //          event CandidateAdded(string indexed candidateId); ❌ undecodable
-      const iface = new ethers.Interface([
-        "event CandidateAdded(string candidateId)",
-      ]);
+      // ── Load candidates from non-indexed CandidateAdded events ───────
+      // IMPORTANT: event CandidateAdded(string candidateId) — NOT indexed
+      // Indexed strings are keccak256-hashed into topics and cannot be decoded back.
+      const candidateIds = await contract.getCandidateList();
 
-      const logs = await provider.getLogs({
-        fromBlock: 0,
-        toBlock:   "latest",
-        address:   addr,
-        topics:    [iface.getEvent("CandidateAdded").topicHash],
-      });
-
+      // Candidates are stored in log order — this order MUST match candidateList[]
+      // on-chain, which is the order addCandidate() was called.
+      // encryptVoteVector() uses the index in this array to build the 1-hot vector.
       const settled = await Promise.allSettled(
-        logs.map(async (log) => {
-          const parsed           = iface.parseLog(log);
-          const id               = parsed.args.candidateId;
+        candidateIds.map(async (id) => {
           const [cId, cName, cParty] = await contract.getCandidateInfo(id);
           return { id: cId, name: cName, party: cParty };
         })
       );
 
-      setCandidates(
-        settled
-          .filter(r => r.status === "fulfilled")
-          .map(r => r.value)
-      );
+      setCandidates(settled.filter(r => r.status === "fulfilled").map(r => r.value));
       setSelectedCandidate(null);
       setTxHash(null);
-
     } catch (e) {
       showToast("Failed to load election details: " + e.message, "error");
     }
@@ -617,44 +470,43 @@ export default function VoterDashboard() {
   // ── Cast Vote ─────────────────────────────────────────────────────────
   const handleCastVote = async () => {
     try {
-      if (!wallet)              { showToast("Connect wallet first", "error");     return; }
+      if (!wallet)              { showToast("Connect wallet first",     "error"); return; }
       if (!selectedElection)    { showToast("Select an election first", "error"); return; }
-      if (!selectedCandidate)   { showToast("Select a candidate first", "error"); return; }
-      if (voterState?.hasVoted) { showToast("You have already voted", "error");   return; }
+      if (!selectedCandidate)   { showToast("Select a candidate",       "error"); return; }
+      if (voterState?.hasVoted) { showToast("Already voted",            "error"); return; }
       if (electionInfo?.status !== "active") {
-        showToast("Election is not currently active", "error"); 
-        return;
+        showToast("Election is not currently active", "error"); return;
       }
 
       setLoading(true);
       showToast("Encrypting vote...", "info");
 
-      let encryptedVote;
-      try {
-        const res = await fetch("/api/auth/public-key");
-        if (res.ok) {
-          const { n, g } = await res.json();
-          const { PublicKey } = await import("paillier-bigint");
-          const pubKey  = new PublicKey(BigInt(n), BigInt(g));
-          const encoded = new TextEncoder().encode(selectedCandidate.id);
-          const bigint  = BigInt("0x" + Array.from(encoded).map(b => b.toString(16).padStart(2, "0")).join(""));
-          encryptedVote = pubKey.encrypt(bigint).toString();
-        } else {
-          encryptedVote = selectedCandidate.id;
-          showToast("⚠ Public key unavailable — sending unencrypted (dev mode)", "info");
-        }
-      } catch {
-        encryptedVote = selectedCandidate.id;
-      }
+      // 1. Find chosen candidate's index in the ordered candidates[] array.
+      //    This index determines which slot gets E(1) in the 1-hot vector.
+      //    It MUST match candidateList[] order on-chain.
+      const chosenIndex = candidates.findIndex(c => c.id === selectedCandidate.id);
+      if (chosenIndex === -1) throw new Error("Candidate index not found");
 
+      // 2. encryptVoteVector() internally:
+      //    a) fetches {n, g} from /api/voting/public-key
+      //    b) constructs PublicKey(BigInt(n), BigInt(g))
+      //    c) returns [E(0), ..., E(1), ..., E(0)] as string[]
+      //    The private key never touches the client at any point.
+      const encryptedVector = await encryptVoteVector(chosenIndex, candidates.length);
+      // e.g. ["23948572...", "91827364...", "12345678..."] for 3 candidates
+
+      // 3. Submit string[] directly — no JSON.stringify
       showToast("Waiting for MetaMask approval...", "info");
-
       const signer   = await getSigner();
       const contract = new ethers.Contract(selectedElection, ElectionABI, signer);
-      const tx       = await contract.castVote(encryptedVote);
-      showToast("Transaction submitted. Waiting for confirmation...", "info");
 
+      // castVote(string[] calldata _encryptedVoteVector)
+      // Solidity stores it in voterMap[msg.sender].encryptedVoteVector
+      const tx = await contract.castVote(encryptedVector);
+
+      showToast("Transaction submitted...", "info");
       const receipt = await tx.wait();
+
       setTxHash(receipt.hash);
       setVoterState(v => ({ ...v, hasVoted: true }));
       showToast("Vote cast successfully!", "success");
@@ -784,6 +636,7 @@ export default function VoterDashboard() {
                     shortAddr={shortAddr}
                     statusBadgeStyle={statusBadgeStyle}
                     getProvider={getProvider}
+                    getSigner={getSigner}
                     ElectionABI={ElectionABI}
                   />
                 ))
@@ -797,6 +650,7 @@ export default function VoterDashboard() {
               </div>
             </div>
 
+            {/* All elections — read-only overview */}
             <div style={styles.card}>
               <div style={styles.cardAccent} />
               <div style={styles.cardTitle}>
@@ -814,14 +668,11 @@ export default function VoterDashboard() {
                         padding: "8px 14px",
                         border: `1px solid ${eligibleElections.includes(addr) ? "rgba(0,200,100,0.3)" : "rgba(0,120,255,0.15)"}`,
                         color:  eligibleElections.includes(addr) ? "#00c864" : "rgba(100,150,255,0.4)",
-                        fontSize: "10px",
-                        fontFamily: "monospace",
-                        letterSpacing: "0.06em",
+                        fontSize: "10px", fontFamily: "monospace", letterSpacing: "0.06em",
                         background: eligibleElections.includes(addr) ? "rgba(0,200,100,0.04)" : "transparent",
                       }}
                     >
-                      {shortAddr(addr)}
-                      {eligibleElections.includes(addr) && " ✓"}
+                      {shortAddr(addr)}{eligibleElections.includes(addr) && " ✓"}
                     </div>
                   ))}
                 </div>
@@ -835,6 +686,7 @@ export default function VoterDashboard() {
         ═══════════════════════════════════════════ */}
         {activeTab === "vote" && (
           <div>
+            {/* Election selector */}
             <div style={{ ...styles.card, marginBottom: "16px" }}>
               <div style={styles.cardAccent} />
               <div style={styles.cardTitle}>
@@ -851,13 +703,11 @@ export default function VoterDashboard() {
                     <button
                       key={addr}
                       style={{
-                        ...styles.tab,
-                        border: "1px solid",
+                        ...styles.tab, border: "1px solid",
                         borderColor: selectedElection === addr ? "rgba(0,180,255,0.6)" : "rgba(0,120,255,0.2)",
                         color:       selectedElection === addr ? "#4d9fff" : "rgba(100,150,255,0.4)",
                         background:  selectedElection === addr ? "rgba(0,40,80,0.4)" : "transparent",
-                        padding: "8px 14px",
-                        fontSize: "10px",
+                        padding: "8px 14px", fontSize: "10px",
                       }}
                       onClick={() => selectElection(addr)}
                     >
@@ -902,6 +752,7 @@ export default function VoterDashboard() {
 
                 <hr style={{ border: "none", borderTop: "1px solid rgba(0,120,255,0.1)", margin: "24px 0" }} />
 
+                {/* ── Vote states ─────────────────────────────────── */}
                 {voterState?.hasVoted ? (
                   <div style={{ textAlign: "center", padding: "20px 0" }}>
                     <div style={{ fontSize: "11px", letterSpacing: "0.15em", color: "rgba(0,200,80,0.6)", marginBottom: "10px", textTransform: "uppercase" }}>
@@ -918,24 +769,28 @@ export default function VoterDashboard() {
                       </div>
                     )}
                   </div>
+
                 ) : electionInfo.status === "upcoming" ? (
                   <div style={styles.warningBox}>
                     ⚠ Election has not started yet. Voting opens at {fmtDate(electionInfo.startTime)}.
                   </div>
+
                 ) : electionInfo.status === "ended" ? (
                   <div style={styles.warningBox}>
                     ⚠ Election has ended. Voting closed at {fmtDate(electionInfo.endTime)}.
                   </div>
+
                 ) : !voterState ? (
                   <div style={styles.warningBox}>
                     ⚠ Your wallet ({shortAddr(wallet)}) is not registered as a voter in this election.
                   </div>
+
                 ) : (
                   <>
                     <div style={styles.infoBox}>
-                      Your vote will be encrypted client-side using Paillier homomorphic encryption
-                      before being submitted to the blockchain. The admin cannot see your choice
-                      until after the election ends.
+                      Your vote is encrypted client-side using Paillier homomorphic encryption
+                      before being submitted to the blockchain. The admin cannot identify your
+                      choice until the election ends — only the final tally is ever decrypted.
                     </div>
 
                     <div style={styles.cardTitle}>
@@ -970,7 +825,11 @@ export default function VoterDashboard() {
 
                     <div style={styles.btnRow}>
                       <button
-                        style={{ ...styles.btn, ...styles.btnSuccess, opacity: (!selectedCandidate || loading) ? 0.5 : 1, cursor: (!selectedCandidate || loading) ? "not-allowed" : "pointer" }}
+                        style={{
+                          ...styles.btn, ...styles.btnSuccess,
+                          opacity: (!selectedCandidate || loading) ? 0.5 : 1,
+                          cursor:  (!selectedCandidate || loading) ? "not-allowed" : "pointer",
+                        }}
                         onClick={handleCastVote}
                         disabled={loading || !selectedCandidate}
                       >
@@ -1004,6 +863,7 @@ export default function VoterDashboard() {
                   </>
                 )}
               </div>
+
             ) : selectedElection ? (
               <div style={styles.card}>
                 <div style={styles.cardAccent} />
@@ -1041,13 +901,11 @@ export default function VoterDashboard() {
                       <button
                         key={addr}
                         style={{
-                          ...styles.tab,
-                          border: "1px solid",
+                          ...styles.tab, border: "1px solid",
                           borderColor: selectedElection === addr ? "rgba(0,180,255,0.6)" : "rgba(0,120,255,0.2)",
                           color:       selectedElection === addr ? "#4d9fff" : "rgba(100,150,255,0.4)",
                           background:  selectedElection === addr ? "rgba(0,40,80,0.4)" : "transparent",
-                          padding: "8px 14px",
-                          fontSize: "10px",
+                          padding: "8px 14px", fontSize: "10px",
                         }}
                         onClick={() => selectElection(addr)}
                       >
@@ -1137,7 +995,7 @@ export default function VoterDashboard() {
 }
 
 // ── Sub-component: Eligible Election Row ─────────────────────────────
-function EligibleElectionRow({ addr, isSelected, wallet, onClick, styles, shortAddr, statusBadgeStyle, getProvider, ElectionABI }) {
+function EligibleElectionRow({ addr, isSelected, wallet, onClick, styles, shortAddr, statusBadgeStyle, getProvider, getSigner, ElectionABI }) {
   const [info, setInfo]                   = useState(null);
   const [voterHasVoted, setVoterHasVoted] = useState(null);
 
@@ -1155,25 +1013,19 @@ function EligibleElectionRow({ addr, isSelected, wallet, onClick, styles, shortA
           contract.winnerDeclared(),
           contract.WINNER(),
         ]);
-        const s   = Number(start);
-        const e   = Number(end);
-        const now = Math.floor(Date.now() / 1000);
+        const s = Number(start), e = Number(end);
         setInfo({
-          name,
-          voterCount:     Number(voterCount),
-          votedCount:     Number(votedCount),
-          startTime:      s,
-          endTime:        e,
-          status:         now < s ? "upcoming" : now <= e ? "active" : "ended",
-          winnerDeclared: declared,
-          winner,
+          name, voterCount: Number(voterCount), votedCount: Number(votedCount),
+          startTime: s, endTime: e, status: getStatus(s, e),
+          winnerDeclared: declared, winner,
         });
 
-        // FIX 5: wrapped in its own try/catch so a revert here never breaks
-        //        the card render — badge simply won't show if it fails.
+        // getVoterInfo requires msg.sender == voter — use signer, not provider
         if (wallet) {
           try {
-            const [, , hasVoted] = await contract.getVoterInfo(wallet);
+            const signer         = await getSigner();
+            const signedContract = new ethers.Contract(addr, ElectionABI, signer);
+            const [, , hasVoted] = await signedContract.getVoterInfo(wallet);
             setVoterHasVoted(hasVoted);
           } catch {
             setVoterHasVoted(null);
@@ -1195,7 +1047,6 @@ function EligibleElectionRow({ addr, isSelected, wallet, onClick, styles, shortA
       {isSelected && (
         <div style={{ position: "absolute", top: 0, left: 0, width: "3px", height: "100%", background: "linear-gradient(180deg, #0064ff, #00c8ff)" }} />
       )}
-
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "8px" }}>
         <div>
           <div style={{ fontSize: "14px", fontWeight: "600", color: "#c0d8ff", marginBottom: "4px", letterSpacing: "0.04em" }}>

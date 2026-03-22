@@ -468,6 +468,7 @@ export default function AdminDashboard() {
   const [elections, setElections]       = useState([]);
   const [selectedElection, setSelected] = useState(null);
   const [electionInfo, setElectionInfo] = useState(null);
+  const [tallyResult, setTallyResult] = useState(null);
 
   // Form states
   const [createForm, setCreateForm] = useState({
@@ -685,6 +686,89 @@ export default function AdminDashboard() {
       showToast(`Winner announced: ${winnerId}`, "success");
       setWinnerId("");
       await loadElectionInfo(selectedElection);
+    } catch (e) {
+      showToast(e.reason || e.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTallyAndAnnounce = async () => {
+    try {
+      if (!wallet)          { showToast("Connect wallet first",    "error"); return; }
+      if (!selectedElection){ showToast("Select an election",      "error"); return; }
+      if (electionInfo?.status !== "ended") {
+        showToast("Election has not ended yet", "error"); return;
+      }
+
+      setLoading(true);
+      setTallyResult(null);
+
+      // ── Step 1: Server decrypts tally ────────────────────────────
+      // No MetaMask yet — just fetching the winner from server
+      showToast("Decrypting votes on server...", "info");
+
+      const res  = await fetch("/api/voting/tally", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ electionAddress: selectedElection }),
+      });
+
+      const text = await res.text();
+      if (!text) {
+        showToast("Server returned empty response", "error"); return;
+      }
+
+      let data;
+      try { data = JSON.parse(text); }
+      catch {
+        console.error("Non-JSON from /api/voting/tally:", text);
+        showToast("Server error — check terminal", "error"); return;
+      }
+
+      if (!res.ok) {
+        showToast(data.error || `Server error ${res.status}`, "error"); return;
+      }
+
+      // Show tally breakdown before asking for MetaMask
+      setTallyResult(data);
+      showToast(`Tally complete. Winner: ${data.winnerId} — approve MetaMask to announce`, "info");
+
+      // ── Step 2: Client announces via MetaMask ────────────────────
+      // msg.sender must be the ADMIN of THIS election
+      // Each election has its own ADMIN — MetaMask handles the right wallet
+      showToast("Waiting for MetaMask approval...", "info");
+
+      const signer   = await getSigner();
+      const signerAddr = await signer.getAddress();
+
+      // Verify the connected wallet IS the admin of this election
+      const provider    = getProvider();
+      const roContract  = new ethers.Contract(selectedElection, ElectionABI, provider);
+      const electionAdmin = await roContract.getElectionAdmin();
+
+      if (signerAddr.toLowerCase() !== electionAdmin.toLowerCase()) {
+        showToast(
+          `Wrong wallet — election admin is ${shortAddr(electionAdmin)}, you connected ${shortAddr(signerAddr)}`,
+          "error"
+        );
+        return;
+      }
+
+      // Admin signs announceWinner() — MetaMask popup appears here
+      const contract = new ethers.Contract(selectedElection, ElectionABI, signer);
+      const tx       = await contract.announceWinner(data.winnerId);
+
+      showToast("Transaction submitted...", "info");
+      const receipt = await tx.wait();
+
+      // Update tally result with tx hash
+      setTallyResult(prev => ({ ...prev, txHash: receipt.hash }));
+      showToast(`Winner announced on-chain: ${data.winnerId}`, "success");
+
+      // Refresh — winnerDeclared flips true
+      await loadElectionInfo(selectedElection);
+
     } catch (e) {
       showToast(e.reason || e.message, "error");
     } finally {
@@ -1058,48 +1142,146 @@ export default function AdminDashboard() {
                 Announce Election Winner
               </div>
 
+              {/* ── State 1: winner already declared on-chain ─────────────── */}
               {electionInfo?.winnerDeclared ? (
                 <div style={{ padding: "24px", textAlign: "center" }}>
-                  <div style={{ fontSize: "11px", letterSpacing: "0.15em", color: "rgba(0,200,80,0.6)", marginBottom: "12px", textTransform: "uppercase" }}>
+                  <div style={{
+                    fontSize: "11px", letterSpacing: "0.15em", textTransform: "uppercase",
+                    color: "rgba(0,200,80,0.6)", marginBottom: "12px",
+                  }}>
                     Winner Already Declared
                   </div>
-                  <div style={{ fontSize: "28px", fontWeight: "700", background: "linear-gradient(90deg, #4d9fff, #00c8ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                  <div style={{
+                    fontSize: "28px", fontWeight: "700",
+                    background: "linear-gradient(90deg, #4d9fff, #00c8ff)",
+                    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                  }}>
                     {electionInfo.winner}
                   </div>
+                  <div style={{
+                    marginTop: "8px", fontSize: "11px",
+                    color: "rgba(0,150,255,0.4)", letterSpacing: "0.1em",
+                  }}>
+                    CANDIDATE ID
+                  </div>
                 </div>
+
               ) : (
                 <>
+                  {/* ── State 2: election not ended yet ───────────────────── */}
                   {electionInfo && electionInfo.status !== "ended" && (
-                    <div style={{ marginBottom: "16px", padding: "12px 16px", background: "rgba(255,150,0,0.05)", border: "1px solid rgba(255,150,0,0.2)", fontSize: "11px", color: "rgba(255,180,50,0.8)", letterSpacing: "0.1em" }}>
-                      ⚠ Election must end before announcing a winner. Current status: {electionInfo.status?.toUpperCase()}
+                    <div style={{
+                      marginBottom: "16px", padding: "12px 16px",
+                      background: "rgba(255,150,0,0.05)",
+                      border: "1px solid rgba(255,150,0,0.2)",
+                      fontSize: "11px", color: "rgba(255,180,50,0.8)",
+                      letterSpacing: "0.1em",
+                    }}>
+                      ⚠ Election must end before tallying.
+                      Current status: {electionInfo.status?.toUpperCase()}
                     </div>
                   )}
-                  <div style={{ marginBottom: "16px", padding: "12px 16px", background: "rgba(0,100,255,0.05)", border: "1px solid rgba(0,100,255,0.15)", fontSize: "11px", color: "rgba(100,180,255,0.7)", letterSpacing: "0.08em", lineHeight: 1.6 }}>
-                    Decrypt all votes off-chain via <code style={{ color: "#4d9fff" }}>/api/voting/decrypt</code>, tally them, then enter the winning candidate ID below.
+
+                  {/* ── Info box — explains what the button does ───────────── */}
+                  <div style={{
+                    marginBottom: "20px", padding: "12px 16px",
+                    background: "rgba(0,100,255,0.05)",
+                    border: "1px solid rgba(0,100,255,0.15)",
+                    fontSize: "11px", color: "rgba(100,180,255,0.7)",
+                    letterSpacing: "0.08em", lineHeight: 1.8,
+                  }}>
+                    Clicking <strong style={{ color: "#4d9fff" }}>Tally & Announce</strong> will:
+                    <br />1. Fetch all encrypted vote vectors from on-chain storage
+                    <br />2. Homomorphically sum ciphertexts per candidate — no decryption yet
+                    <br />3. Decrypt final tally once — server-side only via paillierKeys.js
+                    <br />4. Call <code style={{ color: "#4d9fff" }}>announceWinner()</code> on-chain automatically
                   </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Winning Candidate ID</label>
-                    <input
-                      style={styles.input}
-                      placeholder="e.g. CAND_001"
-                      value={winnerId}
-                      onChange={e => setWinnerId(e.target.value)}
-                    />
-                  </div>
+
+                  {/* ── State 3: tally result after button click ──────────── */}
+                  {tallyResult && (
+                    <div style={{ marginBottom: "20px" }}>
+                      <div style={{
+                        fontSize: "10px", letterSpacing: "0.18em",
+                        textTransform: "uppercase",
+                        color: "rgba(0,180,255,0.5)", marginBottom: "12px",
+                      }}>
+                        Vote Tally
+                      </div>
+
+                      {Object.entries(tallyResult.tally).map(([id, count]) => (
+                        <div key={id} style={{
+                          ...styles.infoRow,
+                          background: id === tallyResult.winnerId
+                            ? "rgba(0,200,80,0.04)" : "transparent",
+                        }}>
+                          <span style={{
+                            ...styles.infoLabel,
+                            color: id === tallyResult.winnerId ? "#00c864" : undefined,
+                          }}>
+                            {id === tallyResult.winnerId ? "🏆 " : ""}{id}
+                          </span>
+                          <span style={{
+                            ...styles.infoValue,
+                            color: id === tallyResult.winnerId ? "#00c864" : undefined,
+                          }}>
+                            {count} vote{count !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                      ))}
+
+                      {/* tx hash of announceWinner() on-chain call */}
+                      <div style={{
+                        marginTop: "16px", padding: "12px 16px",
+                        background: "rgba(0,200,80,0.05)",
+                        border: "1px solid rgba(0,200,80,0.2)",
+                      }}>
+                        <div style={{
+                          fontSize: "9px", letterSpacing: "0.2em",
+                          textTransform: "uppercase",
+                          color: "rgba(0,200,80,0.5)", marginBottom: "6px",
+                        }}>
+                          Transaction Hash
+                        </div>
+                        <div style={{
+                          fontSize: "11px", color: "#00c864",
+                          fontFamily: "monospace", wordBreak: "break-all",
+                        }}>
+                          {tallyResult.txHash}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Tally button ───────────────────────────────────────── */}
                   <div style={styles.btnRow}>
                     <button
-                      style={{ ...styles.btn, ...styles.btnSuccess }}
-                      onClick={handleAnnounceWinner}
-                      disabled={loading || !selectedElection}
+                      style={{
+                        ...styles.btn,
+                        ...styles.btnSuccess,
+                        opacity: (
+                          loading || !selectedElection || electionInfo?.status !== "ended"
+                        ) ? 0.5 : 1,
+                        cursor: (
+                          loading || !selectedElection || electionInfo?.status !== "ended"
+                        ) ? "not-allowed" : "pointer",
+                      }}
+                      onClick={handleTallyAndAnnounce}
+                      disabled={
+                        loading || !selectedElection || electionInfo?.status !== "ended"
+                      }
                     >
                       {loading && <span style={styles.spinner} />}
-                      Announce Winner On-Chain
+                      Tally & Announce Winner
                     </button>
                   </div>
                 </>
               )}
+
               {!selectedElection && (
-                <div style={{ marginTop: "12px", fontSize: "11px", color: "rgba(255,150,50,0.7)", letterSpacing: "0.1em" }}>
+                <div style={{
+                  marginTop: "12px", fontSize: "11px",
+                  color: "rgba(255,150,50,0.7)", letterSpacing: "0.1em",
+                }}>
                   ⚠ Select an election above first
                 </div>
               )}
@@ -1127,15 +1309,61 @@ export default function AdminDashboard() {
 // ── Sub-components ────────────────────────────────────────────────────
 
 function ElectionCard({ addr, isSelected, onClick, styles, statusBadge, shortAddr }) {
+  const [electionName, setElectionName] = useState("Loading...");
+  const [status, setStatus]             = useState(null);
+
+  useEffect(() => {
+    async function fetchInfo() {
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const contract = new ethers.Contract(addr, ElectionABI, provider);
+
+        const [name, start, end] = await Promise.all([
+          contract.getElectionName(),
+          contract.getStartTime(),
+          contract.getEndTime(),
+        ]);
+
+        setElectionName(name);
+        setStatus(getStatus(Number(start), Number(end)));
+      } catch (err) {
+        console.warn("ElectionCard fetch error:", addr, err.message);
+        setElectionName(shortAddr(addr));  // fallback to address
+      }
+    }
+    fetchInfo();
+  }, [addr]);
+
   return (
     <div
       className="election-card"
       style={{ ...styles.electionCard, ...(isSelected ? styles.electionCardSelected : {}) }}
       onClick={onClick}
     >
-      {isSelected && <div style={{ position: "absolute", top: 0, left: 0, width: "3px", height: "100%", background: "linear-gradient(180deg, #0064ff, #00c8ff)" }} />}
-      <span style={styles.electionName}>Election Contract</span>
+      {isSelected && (
+        <div style={{
+          position: "absolute", top: 0, left: 0,
+          width: "3px", height: "100%",
+          background: "linear-gradient(180deg, #0064ff, #00c8ff)",
+        }} />
+      )}
+
+      {/* Status badge */}
+      {status && (
+        <span style={{
+          ...styles.badge,
+          ...(status === "active"   ? styles.badgeActive   :
+              status === "upcoming" ? styles.badgeUpcoming :
+              styles.badgeEnded),
+        }}>
+          {status}
+        </span>
+      )}
+
+      {/* ✅ Actual election name from contract */}
+      <span style={styles.electionName}>{electionName}</span>
       <div style={styles.electionAddr}>{addr}</div>
+
       {isSelected && (
         <div style={{ marginTop: "8px", fontSize: "10px", color: "#4d9fff", letterSpacing: "0.12em" }}>
           ● SELECTED

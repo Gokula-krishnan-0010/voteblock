@@ -107,6 +107,7 @@ contract Election {
   function castVote(string[] memory _encryptedVoteVector) public onlyVoter onlyDuringElection {
     require(voterMap[msg.sender].walletAddress != address(0), "Not registered voter");
     require(voterMap[msg.sender].hasVoted == false, "Already voted");
+    require(_encryptedVoteVector.length == candidateList.length, "Vote vector length mismatch");
 
     voterMap[msg.sender].hasVoted = true;
     voterMap[msg.sender].encryptedVoteVector = _encryptedVoteVector;
@@ -128,6 +129,16 @@ contract Election {
 
 
 
+  function isRegisteredVoter(address _walletAddress) public view returns(bool) {
+    return bytes(voterMap[_walletAddress].voterId).length > 0;
+  }
+
+  function getEncryptedVote(address _walletAddress) public view returns(bool, string[] memory) {
+    return (
+      voterMap[_walletAddress].hasVoted,
+      voterMap[_walletAddress].encryptedVoteVector
+    );
+  }
 
   function getVoterInfo(address _walletAddress) public view returns(string memory, address, bool, string[] memory) {
     require(msg.sender == _walletAddress || msg.sender == ADMIN, "Unauthorized");
@@ -146,7 +157,7 @@ contract Election {
       candidateMap[_candidateId].candidateParty
     );
   }
-
+ 
   function getElectionName() public view returns(string memory) {
     return ELECTION_NAME;
   }
@@ -163,7 +174,7 @@ contract Election {
     return ELECTION_END_TIME;
   }
 
-  function getWinner() public view returns(string memory) {
+  function getWinnerId() public view returns(string memory) {
     return WINNER;
   }
 
@@ -179,11 +190,11 @@ contract Election {
     return candidateList.length;
   }
 
-  function getVoterList() public view onlyAdmin returns(address[] memory) {
+  function getVoterList() public view returns(address[] memory) {
     return voterList;
   }
 
-  function getVotedVoterList() public view onlyAdmin returns(address[] memory) {
+  function getVotedVoterList() public view returns(address[] memory) {
     return votedVoters;
   }
 
