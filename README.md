@@ -36,21 +36,21 @@ A decentralized voting application (DApp) built with **Next.js**, **Hardhat 3**,
 │   lib/pallierEncrypt.js        lib/adminContract.js          │
 │   lib/electionContract.js      lib/electionContract.js       │
 │         │                            │                       │
-│         └──── window.ethereum (MetaMask) ───────────────────┤
-└───────────────────────┬─────────────────────────────────────┘
+│         └──── window.ethereum (MetaMask) ────────────────────┤
+└───────────────────────┬──────────────────────────────────────┘
                         │ signed transactions
                         ▼
 ┌──────────────────────────────────────────────────────────────┐
-│           BLOCKCHAIN  (localhost:8545 / Sepolia)              │
+│           BLOCKCHAIN  (localhost:8545 / Sepolia)             │
 │                                                              │
 │   Admin.sol  ──createElection()──▶  Election.sol             │
 │   (deployed once)                   (one per election)       │
 │                                     stores encrypted vectors │
-└───────────────────────┬─────────────────────────────────────┘
+└───────────────────────┬──────────────────────────────────────┘
                         │ read ciphertexts
                         ▼
 ┌──────────────────────────────────────────────────────────────┐
-│                    NEXT.JS SERVER                             │
+│                    NEXT.JS SERVER                            │
 │                                                              │
 │   /api/voting/decrypt   ──▶  server/paillierKeys.js          │
 │   /api/auth/public-key  ──▶  server/paillierKeys.js          │
@@ -125,10 +125,6 @@ voteblock/
         │   ├── voter/
         │   │   └── dashboard/page.jsx   # cast encrypted vote, view results
         │   ├── api/
-        │   │   ├── auth/
-        │   │   │   ├── login/route.js
-        │   │   │   ├── request-otp/route.js
-        │   │   │   └── verify-otp/route.js
         │   │   └── voting/
         │   │       └── decrypt/route.js  # homomorphic tally + decrypt
         │   ├── connect-wallet/page.jsx
@@ -139,11 +135,6 @@ voteblock/
         │   ├── adminContract.js         # Admin.sol read/write helpers
         │   ├── electionContract.js      # Election.sol read/write helpers
         │   ├── pallierEncrypt.js        # client-side encryption (public key only)
-        │   ├── db.js                    # MongoDB connection
-        │   ├── email.js                 # nodemailer setup
-        │   ├── jwt.js                   # sign + verify tokens
-        │   ├── otp.js                   # generate + store OTPs
-        │   └── password.js             # bcrypt hash + compare
         ├── server/
         │   └── paillierKeys.js          # 🔐 private key — server only
         └── scripts/
@@ -267,16 +258,6 @@ EMAIL_PASS=your_gmail_app_password       # Gmail App Password, not account passw
 ---
 
 ## Smart Contract Setup
-
-### Known bug in `Election.sol` — fix before deploying
-
-```solidity
-// ❌ Current — ELECTION_START_TIME is 0 at this point (not yet assigned)
-require(ELECTION_START_TIME < _endTime, "End time must be after Start time.");
-
-// ✅ Fix — use the parameter directly
-require(_startTime < _endTime, "End time must be after Start time.");
-```
 
 ### Generate Paillier Keys — run once
 
