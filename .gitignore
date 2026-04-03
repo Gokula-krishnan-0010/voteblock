@@ -64,6 +64,6 @@ next-env.d.ts
 
 
 # Deployed contracts
-./Transaction_details
-./future-features
-./images
+Transaction_details/
+future-features/
+images/
