@@ -1,7 +1,6 @@
 import { network } from "hardhat";
 
 async function main() {
-  // ── v3 style — use network.connect() with exact network name ─────
   const { viem } = await network.connect("sepolia");
 
   const publicClient = await viem.getPublicClient();
@@ -19,20 +18,18 @@ async function main() {
     throw new Error("Deployer has no ETH — fund your Sepolia wallet first");
   }
 
-  // ── Deploy Admin.sol ──────────────────────────────────────────────
+  // Deploy Admin.sol 
   console.log("\n► Deploying Admin.sol...");
   const admin = await viem.deployContract("Admin");
-  console.log("✔ Admin deployed at :", admin.address);
+  console.log("✔ Admin.sol deployed at :", admin.address);
 
-  // ── Read verify ───────────────────────────────────────────────────
+  // Read verify 
   const superAdmin = await admin.read.SUPER_ADMIN();
   console.log("✔ SUPER_ADMIN       :", superAdmin);
 
-  // ── Print for .env.local ──────────────────────────────────────────
-  console.log("\n══════════════════════════════════════════════════");
-  console.log("  Add to your Next.js .env.local:");
+  // Print for .env.local 
+  console.log("\n  Add to your Next.js .env.local:");
   console.log(`  NEXT_PUBLIC_ADMIN_CONTRACT_ADDRESS=${admin.address}`);
-  console.log("══════════════════════════════════════════════════\n");
 }
 
 main().catch((error) => {

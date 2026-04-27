@@ -7,7 +7,7 @@ contract Election {
   string public ELECTION_NAME;
   uint256 public immutable ELECTION_START_TIME;
   uint256 public immutable ELECTION_END_TIME;
-  string public WINNER;
+  string public WINNER_ID;
   bool public winnerDeclared = false;
 
   struct Voter {
@@ -121,7 +121,7 @@ contract Election {
     require(!winnerDeclared, "Winner already declared");
     require(bytes(candidateMap[_winnerId].candidateId).length != 0, "Invalid candidate");
 
-    WINNER = _winnerId;
+    WINNER_ID = _winnerId;
     winnerDeclared = true;
 
     emit WinnerAnnounced(_winnerId);
@@ -158,24 +158,12 @@ contract Election {
     );
   }
  
-  function getElectionName() public view returns(string memory) {
-    return ELECTION_NAME;
-  }
-
-  function getElectionAdmin() public view returns(address) {
-    return ADMIN;
-  }
-
-  function getStartTime() public view returns(uint256) {
-    return ELECTION_START_TIME;
-  }
-
-  function getEndTime() public view returns(uint256) {
-    return ELECTION_END_TIME;
+  function getElectionInfo() public view returns(string memory, address, uint256, uint256) {
+    return (ELECTION_NAME, ADMIN, ELECTION_START_TIME, ELECTION_END_TIME);
   }
 
   function getWinnerId() public view returns(string memory) {
-    return WINNER;
+    return WINNER_ID;
   }
 
   function getRegisteredVoterCount() public view returns(uint256) {

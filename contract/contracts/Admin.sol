@@ -11,7 +11,7 @@ contract Admin {
 
   event ElectionCreated(
     address indexed electionAddress, 
-    string electionName, 
+    string electionName,
     address admin
   );
 
@@ -19,20 +19,15 @@ contract Admin {
     SUPER_ADMIN = msg.sender; 
   }
 
-  modifier onlySuperAdmin() {
-    require(msg.sender == SUPER_ADMIN, "Only SUPER_ADMIN can create elections.");
-    _;
-  }
-
-  function createElection(address _admin, string memory _electionName, uint256 _startTime, uint256 _endTime) public onlySuperAdmin returns(address) {
-    Election _newElection = new Election(_admin, _electionName, _startTime, _endTime);
+  function createElection(string memory _electionName, uint256 _startTime, uint256 _endTime) public returns(address) {
+    Election _newElection = new Election(msg.sender, _electionName, _startTime, _endTime);
     listOfElection.push(address(_newElection));
 
-    emit ElectionCreated(address(_newElection), _electionName, _admin);
+    emit ElectionCreated(address(_newElection), _electionName, msg.sender);
     return address(_newElection);
   }
 
   function getElections() public view returns(address[] memory) {
-    return listOfElection; // high gas
+    return listOfElection;
   }
 }
