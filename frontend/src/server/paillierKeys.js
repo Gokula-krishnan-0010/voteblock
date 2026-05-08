@@ -2,7 +2,7 @@ import "server-only";
 
 import { PublicKey, PrivateKey } from "paillier-bigint";
 
-// ── Validate env vars at startup ─────────────────────────────────────
+// Validate .env vars at startup 
 const { 
   PAILLIER_N, 
   PAILLIER_G, 
@@ -17,7 +17,7 @@ if (!PAILLIER_N || !PAILLIER_G || !PAILLIER_LAMBDA || !PAILLIER_MU) {
   );
 }
 
-// ── Reconstruct keys from env (BigInt-safe) ──────────────────────────
+// Reconstruct keys from env (BigInt-safe) 
 const n      = BigInt(PAILLIER_N);
 const g      = BigInt(PAILLIER_G);
 const lambda = BigInt(PAILLIER_LAMBDA);
@@ -26,7 +26,7 @@ const mu     = BigInt(PAILLIER_MU);
 const publicKey  = new PublicKey(n, g);
 const privateKey = new PrivateKey(lambda, mu, publicKey);
 
-// ── Exports ──────────────────────────────────────────────────────────
+// Exports 
 
 // Used by API route to send public key to client
 export function getPublicKey() {           // sync now — no await needed

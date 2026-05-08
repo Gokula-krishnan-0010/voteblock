@@ -4,6 +4,7 @@ import { ethers } from "ethers";
 
 export function getProvider() {
   if (!window.ethereum) {
+    console.log("Metamask not installed");
     throw new Error("MetaMask not installed");
   }
 

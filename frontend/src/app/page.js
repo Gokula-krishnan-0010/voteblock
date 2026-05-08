@@ -601,7 +601,7 @@ function FlowNode({ label, value, highlight, success }) {
     <div style={{
       ...styles.flowNode,
       ...(highlight ? styles.flowNodeHighlight : {}),
-      ...(success   ? styles.flowNodeSuccess   : {}),
+      ...(success ? styles.flowNodeSuccess : {}),
     }}>
       {label && <span style={styles.flowNodeLabel}>{label}</span>}
       <span style={styles.flowNodeValue}>{value}</span>
@@ -611,7 +611,7 @@ function FlowNode({ label, value, highlight, success }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────
 export default function HomePage() {
-  const router  = useRouter();
+  const router = useRouter();
   const [tick, setTick] = useState(0);
 
   // Animate the ticker for the live "heartbeat" in hero
@@ -813,7 +813,7 @@ export default function HomePage() {
                   <div style={{ flex: "2 1 auto" }} />
                   <FlowNode label="Private Key" value="(λ, μ)" success />
                   <div style={{ width: "12px", background: "rgba(0,200,80,0.2)", height: "1px" }} />
-                  <FlowNode label="Server Only" value="🔐 .env.local" success />
+                  <FlowNode label="Server Only" value="🔐 .env" success />
                 </div>
               </div>
 
@@ -912,11 +912,6 @@ export default function HomePage() {
                 title: "Factory Pattern",
                 desc: "Admin.sol deploys each election as a separate contract. Elections are isolated — one compromised election cannot affect others.",
               },
-              {
-                icon: "✉",
-                title: "OTP + JWT Auth",
-                desc: "Admins authenticate with email OTP before accessing the control panel. JWT tokens are signed server-side and expire automatically.",
-              },
             ].map((f) => (
               <div key={f.title} className="feat-card" style={styles.featCard}>
                 <div style={styles.featAccent} />
@@ -944,7 +939,7 @@ export default function HomePage() {
                 Voter Login Flow
               </div>
               {[
-                ["Connect Wallet",  "Click Connect Wallet → MetaMask opens → approve connection"],
+                ["Connect Wallet", "Click Connect Wallet → MetaMask opens → approve connection"],
                 ["Eligibility Check", "Dashboard fetches all elections and checks if your wallet is registered via getVoterInfo()"],
                 ["Select Election", "Choose an eligible active election from your list"],
                 ["Encrypt Vote", "Select candidate → browser fetches public key from /api/auth/public-key → encrypts one-hot vector with Paillier"],
@@ -986,12 +981,12 @@ export default function HomePage() {
                 Admin Login Flow
               </div>
               {[
-                ["Email + Password", "Navigate to /login → enter registered admin credentials"],
-                ["OTP Verification", "One-time code is sent to your email → enter at /verify-otp"],
-                ["JWT Issued", "Server signs a JWT token → stored as httpOnly cookie → grants access to /admin/*"],
                 ["Connect Wallet", "Connect the SUPER_ADMIN or election admin wallet in MetaMask"],
                 ["Create Election", "Deploy a new Election.sol contract via Admin.sol → get contract address"],
+                ["Register candidates", "The admin adds all candidates participating in the election."],
+                ["Register voters", "The admin registers all the voters participating in the election."],
                 ["Manage & Tally", "Add voters, add candidates, then POST /api/voting/decrypt after election ends to tally"],
+                ["Declare results", "After vote tallying and decryption are completed, the admin officially declares the election results."],
               ].map(([title, desc], i) => (
                 <div key={i} style={styles.processStep}>
                   <div style={styles.processStepNum}>{i + 1}</div>
@@ -1035,13 +1030,11 @@ export default function HomePage() {
             {[
               "Solidity 0.8.28",
               "Hardhat 3",
+              "Sepolia Testnet",
+              "MetaMask",
               "Next.js 15",
               "ethers.js v6",
               "paillier-bigint",
-              "MetaMask",
-              "MongoDB",
-              "JWT + OTP",
-              "Ethereum (EVM)",
             ].map(t => (
               <div key={t} style={{
                 padding: "7px 16px",

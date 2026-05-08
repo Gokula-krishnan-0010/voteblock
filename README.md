@@ -100,10 +100,8 @@ voteblock/
 │   │   ├── Admin.sol                    # factory — deploys Election.sol
 │   │   └── Election.sol                 # one per election, stores votes
 │   ├── scripts/
-│   │   ├── deploy.ts                    # deploys Admin.sol to any network
-│   │   └── send-op-tx.ts               # OP chain transaction helper
+│   │   └── deploy.ts                    # deploys Admin.sol to any network
 │   ├── test/
-│   │   └── Counter.ts
 │   └── artifacts/contracts/             # ← generated after compile
 │       ├── Admin.sol/Admin.json
 │       └── Election.sol/Election.json
@@ -232,21 +230,6 @@ PAILLIER_N=your_n_value
 PAILLIER_G=your_g_value
 PAILLIER_LAMBDA=your_lambda_value        # 🔐 never expose to client
 PAILLIER_MU=your_mu_value               # 🔐 never expose to client
-
-# ── Auth ────────────────────────────────────────────────────────────
-JWT_SECRET=your_random_secret_min_32_chars
-
-# ── Database ────────────────────────────────────────────────────────
-DATABASE_URL=mongodb+srv://user:pass@cluster.mongodb.net/voteblock
-
-# ── Email (OTP delivery) ────────────────────────────────────────────
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=your@gmail.com
-EMAIL_PASS=your_gmail_app_password       # Gmail App Password, not account password
-```
-
-> Both `.env` files are already listed in `.gitignore`. Never commit secrets.
 
 ### Variable visibility rules
 
