@@ -556,7 +556,6 @@ export default function VoterDashboard() {
         {/* ── Header ───────────────────────────────────────────────── */}
         <header style={styles.header}>
           <div style={styles.headerLeft}>
-            <div style={styles.logoMark} />
             <div>
               <h1 style={styles.title}>Voteblock</h1>
               <div style={styles.subtitle}>Voter Portal</div>

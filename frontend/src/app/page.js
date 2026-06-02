@@ -257,8 +257,8 @@ const styles = {
   // ── How It Works Cards ───────────────────────────────────────────────
   stepsGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: "2px",
+    gridTemplateColumns: "repeat(2, minmax(220px, 1fr))",
+    gap: "16px",
     background: "rgba(0,120,255,0.08)",
     border: "1px solid rgba(0,120,255,0.15)",
   },
@@ -441,7 +441,7 @@ const styles = {
   // ── Feature cards ────────────────────────────────────────────────────
   featGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gridTemplateColumns: "repeat(2, minmax(260px, 1fr))",
     gap: "16px",
   },
   featCard: {
@@ -664,7 +664,7 @@ export default function HomePage() {
       <div style={styles.container}>
 
         {/* ── Header ──────────────────────────────────────────────── */}
-        <header style={styles.header} className="fade-up-1">
+        {/* <header style={styles.header} className="fade-up-1">
           <div style={styles.headerLeft}>
             <div style={styles.logoMark} className="logo-pulse" />
             <div>
@@ -676,7 +676,7 @@ export default function HomePage() {
             <span style={{ color: "#00c864", animation: "pulse 1.2s infinite" }}>⬤</span>
             {" "}On-Chain {dots}
           </div>
-        </header>
+        </header> */}
 
         {/* ── Hero ────────────────────────────────────────────────── */}
         <section style={styles.hero}>
@@ -704,9 +704,7 @@ export default function HomePage() {
               onClick={() => router.push("/voter/dashboard")}
             >
               <div style={styles.loginCardAccent} />
-              <span style={styles.loginCardIcon}>⬡</span>
-              <span style={styles.loginCardLabel}>Portal</span>
-              <span style={styles.loginCardTitle}>Voter</span>
+              <center><span style={styles.loginCardTitle}>Voter</span></center>
               <span style={styles.loginCardDesc}>
                 Connect your wallet, view eligible elections, and cast
                 your encrypted vote.
@@ -726,9 +724,7 @@ export default function HomePage() {
                 ...styles.loginCardAccent,
                 background: "linear-gradient(90deg, #0040cc, #0088ff)",
               }} />
-              <span style={styles.loginCardIcon}>◈</span>
-              <span style={styles.loginCardLabel}>Control Panel</span>
-              <span style={styles.loginCardTitle}>Admin</span>
+              <center><span style={styles.loginCardTitle}>Admin</span></center>
               <span style={styles.loginCardDesc}>
                 Deploy elections, register voters and candidates,
                 tally results, and announce winners.
@@ -785,7 +781,6 @@ export default function HomePage() {
             ].map((s) => (
               <div key={s.n} className="step-card" style={styles.stepCard}>
                 <div style={styles.stepNum}>{s.n}</div>
-                <span style={styles.stepIcon}>{s.icon}</span>
                 <div style={styles.stepTitle}>{s.title}</div>
                 <div style={styles.stepDesc}>{s.desc}</div>
                 <div style={styles.stepGlow} />
@@ -915,7 +910,6 @@ export default function HomePage() {
             ].map((f) => (
               <div key={f.title} className="feat-card" style={styles.featCard}>
                 <div style={styles.featAccent} />
-                <span style={styles.featIcon}>{f.icon}</span>
                 <div style={styles.featTitle}>{f.title}</div>
                 <div style={styles.featDesc}>{f.desc}</div>
               </div>
